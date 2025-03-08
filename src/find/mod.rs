@@ -28,7 +28,17 @@ pub fn find(target_substring: String, target_path: std::path::PathBuf, num_threa
     let mut initial_input = vec![target_path];
     let maybe_initial_items = walk_search_until_limit(&target_substring, initial_input, &mut res, 2 * num_threads);
     let Ok(mut paths_to_distribute) = maybe_initial_items else {return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read root path: {:?}", maybe_initial_items.err())))};
-    
+    if !sorted {
+        let mut lines: Vec<String> = Vec::with_capacity(res.len());
+        for r in res.clone() {
+            lines.push(r.p);
+        }
+        if lines.len() > 0 {
+            let output_str = format!("{}\n", lines.join("\n"));
+            let res = std::io::stdout().write(output_str.as_bytes());
+        }
+    }
+
     // Interleave items in paths_to_distribute for better distribution
     // Swap every 2nd item
     let vc = (paths_to_distribute.len() / num_threads) + 1;
