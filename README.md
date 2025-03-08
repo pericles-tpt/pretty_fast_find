@@ -16,7 +16,7 @@ NOTE: The path and search target are currently hardcoded for `pvf` so those valu
 - 48GB RAM (2x24GB DDR5 6000)
 - NM790 1TB Gen4 SSD
 
-### Small Number of Results
+### Small Number of Results (58 results)
 Description: Looking for file names matching "Document" in the shallow "Documents" directory
 
 Winner: `pvf` is 13.45% faster than 2nd place, `pff`
@@ -54,7 +54,7 @@ Benchmark 1: ./target/release/pff find -t 84 -tdl 2048 -h Document /run/media/pt
  
   Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
 ```
-### Large Number of Results
+### Large Number of Results (228254 results)
 Description: Looking for file names matching "js" in the deep "pt" directory
 
 Winner: `pff` is 15.95% faster than 2nd place, `fd`
