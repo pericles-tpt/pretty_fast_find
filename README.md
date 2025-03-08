@@ -1,5 +1,5 @@
 # Pretty Fast Find (pff)
-An iterative alternative to 'find' that's faster than most alternatives. This was originally a command in my [seye_rs](https://github.com/pericles-tpt/seye_rs) project, but once I saw the focus of that project shifting to "find" functionality I decided to separate it into this repo.
+An iterative, multithreaded alternative to 'find' that's faster than most alternatives. This was originally a command in my [seye_rs](https://github.com/pericles-tpt/seye_rs) project, but once I saw the focus of that project shifting to "find" functionality I decided to separate it into this repo.
 
 WARNING: This isn't a feature complete `find` alternative and most of the functionality has been implemented for the purposes of comparison to existing tools
 
@@ -9,7 +9,7 @@ WARNING: This isn't a feature complete `find` alternative and most of the functi
 ## Current Performance (benchmarked with `hyperfine`) 
 The following are the results of benchmarking this tool against `fd`, `bfs`, `find` and [`pvf`](https://mastodon.social/@pervognsen/110739397974530013) (note: the `pvf` code from the previous link was copied to this repo for benchmarking, it was slightly modified from the source in order to fairly compare it to the alternatives).
 
-NOTE: The path and search target are currently hardcoded for `pvf` so those values were changes and the project was rebuilt for each set of tests.
+NOTE: The path and search target are currently hardcoded for `pvf` so those values were changed and the project was rebuilt for each set of tests.
 
 ### System
 - Ryzen 9800X3D (8C/16T, 96MB L3 cache)
@@ -57,7 +57,7 @@ Benchmark 1: ./target/release/pff find -t 84 -tdl 2048 -h Document /run/media/pt
 ### Large Number of Results
 Description: Looking for file names matching "js" in the deep "pt" directory
 
-Winner: `pff` is 11.84% faster than 2nd place, `fd`
+Winner: `pff` is 15.95% faster than 2nd place, `fd`
 #### find (NOTE: Reduced runs here because I couldn't be bothered waiting for 1000 x 1.2s runs to finish)
 ```
 Benchmark 1: find /run/media/pt/gen4_test/pt -name '*js*'
@@ -85,17 +85,15 @@ Benchmark 1: ./target/release/pff pvf
 #### pff
 ```
 Benchmark 1: ./target/release/pff find -t 84 -tdl 2048 -h js /run/media/pt/gen4_test/pt
-  Time (mean ± σ):     122.8 ms ±   8.2 ms    [User: 360.6 ms, System: 1123.1 ms]
-  Range (min … max):   113.7 ms … 168.0 ms    1000 runs
- 
-  Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
+  Time (mean ± σ):     117.6 ms ±   2.0 ms    [User: 356.1 ms, System: 1115.7 ms]
+  Range (min … max):   112.0 ms … 133.4 ms    1000 runs
 ```
 
 ### Sorting
 The alternative programs don't have in-built sort functionality afaik. You can pipe their output to the unix `sort` command, but this increases the time taken to ~2s for the "Large" test.
 
-`pff` has an in-built `-s` flag that sorts the output with a comparatively minor time penalty, the average execution times when this option is enabled are:
-- large: 122.8ms -> 188.6ms (34.88% slower)
+`pff` has an in-built `-s` flag that sorts the output with a comparatively minor time penalty, the average execution times from enabling this option are:
+- large: 117.6ms -> 177.6ms (33.78% slower)
 - small: 32.7ms  -> 34.7ms  (5.77% slower)
 
 ### CPU Usage
