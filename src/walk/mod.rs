@@ -1,4 +1,3 @@
-extern crate queues;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use regex::bytes::Regex;

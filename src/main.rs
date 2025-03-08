@@ -4,7 +4,6 @@ mod find;
 #[macro_use]
 extern crate lazy_static;
 
-extern crate libc;
 
 use std::collections::HashSet;
 use std::io::Write;
@@ -14,7 +13,7 @@ use std::env;
 use find::find;
 use utility::MEGABYTE;
 
-const HELP_TEXT: &str = "usage: pff [TARGET SUBSTRING] [ROOT FIND DIRECTORY]
+const HELP_TEXT: &str = "usage: find [TARGET SUBSTRING] [ROOT FIND DIRECTORY]
 ------- Basic options -------
 --help      Print usage and this help message and exit.
 ------- Find options  -------
@@ -36,7 +35,6 @@ fn main() {
         return;
     }
 
-    let is_root = unsafe { libc::geteuid() == 0 };
     let cmd = args[1].as_str();
     let params: Vec<_> = args.iter().skip(2).collect();
     match cmd {
