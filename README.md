@@ -99,5 +99,5 @@ The alternative programs don't have in-built sort functionality afaik. You can p
 ### CPU Usage
 Although I didn't quantitatively measure it, `pvf` appeared to have lower CPU usage and power consumption than `pvf`/`fd`. On the other hand the `find`/`bfs` commands had lower CPU usage than `pff` but also had significantly worse performance.
 
-### Planned Features
+## Planned Features
 - Add an option to specify a memory usage limit
