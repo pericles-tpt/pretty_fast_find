@@ -201,3 +201,113 @@ pub fn thread_from_root<T: Clone + std::marker::Send + 'static, U: std::marker::
     }
     Ok(res)
 }
+
+pub fn thread_from_root_new<T: Clone + std::marker::Send + 'static + std::marker::Sync + std::fmt::Debug,  U: std::marker::Send + 'static +  std::marker::Sync + std::fmt::Debug, V: std::marker::Send + 'static + Clone + std::marker::Sync>(
+    root: T, 
+    skip_set: HashSet<T>,
+    find_target: &V,
+    num_threads: usize, 
+    num_thread_iterations_before_yield: usize,
+    thread_collect_fn: Option<fn (input: &mut Vec<T>, skip_set: &HashSet<T>, output: &mut Vec<U>, limit: usize) -> std::io::Result<Vec<T>>>,
+    thread_find_fn: Option<fn (target: &V, input: Vec<T>, output: &mut Vec<U>, limit: usize) -> std::io::Result<Vec<T>>>,
+    sort_output_items: fn (a: &U, b: &U) -> Ordering,
+    filter: Option<fn(a: &U) -> bool>,
+    sorted: bool,
+    to_string: fn(a: U) -> String,
+) -> std::io::Result<Vec<U>> {
+    let mut res: Vec<U> = Vec::new();
+
+    // Do first pass of thread_*_fn() on root to get multiple items
+    let mut initial_input = vec![root];
+    let maybe_initial_items: std::io::Result<Vec<T>>;
+    if thread_collect_fn.is_some() {
+        maybe_initial_items = thread_collect_fn.unwrap()(&mut initial_input, &skip_set, &mut res, 2 * num_threads);
+    } else {
+        maybe_initial_items = thread_find_fn.unwrap()(find_target, initial_input, &mut res, 2 * num_threads);
+    }
+    let Ok(mut paths_to_distribute) = maybe_initial_items else {return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read root path: {:?}", maybe_initial_items.err())))};
+    
+    // Interleave items in paths_to_distribute for better distribution
+    // Swap every 2nd item
+    let vc = (paths_to_distribute.len() / num_threads) + 1;
+    let mut paths_to_distribute_per_thread: Vec<Vec<T>> = vec![Vec::with_capacity(vc); num_threads];
+    let mut chunk_size = num_threads;
+    while paths_to_distribute.len() > 0 {
+        if chunk_size >= paths_to_distribute.len() {
+            chunk_size = paths_to_distribute.len();
+        }
+        let chunk: Vec<T> = paths_to_distribute.drain(0..chunk_size).collect();
+        
+        for j in 0..chunk.len() {
+            paths_to_distribute_per_thread[j].push(chunk[j].clone());
+        }
+    }
+    
+    loop {
+        let prs: Vec<(Vec<T>, Vec<U>)> = paths_to_distribute_per_thread.par_iter_mut().map(|p| {
+            let mut results: Vec<U> = Vec::new();
+            
+            let maybe_send_to_main: std::io::Result<Vec<T>>;
+            if thread_collect_fn.is_some() {
+                maybe_send_to_main = thread_collect_fn.unwrap()(p, &skip_set, &mut results, num_thread_iterations_before_yield);
+            } else {
+                maybe_send_to_main = thread_find_fn.unwrap()(&find_target, p.to_vec(), &mut results, num_thread_iterations_before_yield);
+            }
+            
+            if filter.is_some() {
+                let filter_fn = filter.unwrap();
+                results = results.into_iter().filter(|it| {
+                    return filter_fn(it)
+                }).collect();
+            }
+            if maybe_send_to_main.is_err() {
+                return (vec![], results);
+            }
+            
+            if sorted {
+                return (maybe_send_to_main.unwrap(), results)
+            }
+            
+            let mut lines: Vec<String> = Vec::with_capacity(results.len());
+            for r in results {
+                lines.push(to_string(r));
+            }
+            if lines.len() > 0 {
+                let output_str = format!("{}\n", lines.join("\n"));
+                let res = std::io::stdout().write(output_str.as_bytes());
+            }
+            return (maybe_send_to_main.unwrap(), Vec::new());
+        }).collect();
+        
+        let split_pair: (Vec<Vec<T>>, Vec<Vec<U>>) = prs.into_iter().map(|(a, b)|(a, b)).unzip();
+        let mut new_results = split_pair.1.into_iter().flatten().collect();
+        paths_to_distribute = split_pair.0.into_iter().flatten().collect();
+        res.append(&mut new_results);
+        
+        if paths_to_distribute.len() == 0 {
+            break;
+        }
+        
+        // Split `paths_to_distribute` s.t. each thread operates on a (roughly) equal number of paths
+        let mut curr_num_threads = num_threads;
+        if paths_to_distribute.len() < curr_num_threads {
+            curr_num_threads = paths_to_distribute.len();
+        }
+        paths_to_distribute_per_thread = Vec::with_capacity(curr_num_threads);
+        
+        let min_paths_per_thread = paths_to_distribute.len() / curr_num_threads;
+        let mut rem_paths = paths_to_distribute.len() - (min_paths_per_thread * curr_num_threads);
+        while paths_to_distribute.len() > 0 {
+            let mut num_thread_paths = min_paths_per_thread;
+            if rem_paths > 0 {
+                num_thread_paths += 1;
+                rem_paths -= 1;
+            }
+            
+            let paths = paths_to_distribute.drain(0..num_thread_paths).collect();
+            paths_to_distribute_per_thread.push(paths);
+        }
+    }
+
+    Ok(res)
+}
