@@ -6,10 +6,8 @@ WARNING: This isn't a feature complete `find` alternative and most of the functi
 ## How it works
 `pff` does breadth-first, iterative traversals of a list of directories up to a limit (specified by the `-tdl` parameter). It uses `rayon` to multi-thread those traversals up to a thread limit (specified by the `-t` parameter).
 
-## Current Performance (benchmarked with `hyperfine`) 
-The following are the results of benchmarking this tool against `fd`, `bfs`, `find` and [`pvf`](https://mastodon.social/@pervognsen/110739397974530013) (note: the `pvf` code from the previous link was copied to this repo for benchmarking, it was slightly modified from the source in order to fairly compare it to the alternatives).
-
-NOTE: The path and search target are currently hardcoded for `pvf` so those values were changed and the project was rebuilt for each set of tests.
+## Current Performance (benchmarked with `hyperfine`, with `--warmup 250`) 
+The following are the results of benchmarking this tool against `fd`, `bfs` and `find`
 
 ### System
 - Ryzen 9800X3D (8C/16T, 96MB L3 cache)
@@ -19,38 +17,30 @@ NOTE: The path and search target are currently hardcoded for `pvf` so those valu
 ### Small Number of Results (58 results)
 Description: Looking for file names matching "Document" in the shallow "Documents" directory
 
-Winner: `pvf` is 13.45% faster than 2nd place, `pff`
+Winner: `pff` is 15.31% faster than 2nd place, `fd`
 #### find
 ```
 Benchmark 1: find /run/media/pt/gen4_test/pt/Documents -name '*Document*'
-  Time (mean ± σ):     320.6 ms ±   6.8 ms    [User: 114.1 ms, System: 205.5 ms]
-  Range (min … max):   302.1 ms … 351.0 ms    1000 runs
+  Time (mean ± σ):     317.7 ms ±   3.8 ms    [User: 113.8 ms, System: 203.1 ms]
+  Range (min … max):   303.1 ms … 329.2 ms    1000 runs
 ```
 #### bfs
 ```
 Benchmark 1: bfs -name '*Document*' -nocolor /run/media/pt/gen4_test/pt/Documents
-  Time (mean ± σ):      70.8 ms ±   4.0 ms    [User: 82.1 ms, System: 248.8 ms]
-  Range (min … max):    64.2 ms …  86.6 ms    1000 runs
+  Time (mean ± σ):      69.8 ms ±   3.3 ms    [User: 81.7 ms, System: 245.5 ms]
+  Range (min … max):    64.6 ms …  81.9 ms    1000 runs
 ```
 #### fd
 ```
 Benchmark 1: fd -I -H --color never Document /run/media/pt/gen4_test/pt/Documents
-  Time (mean ± σ):      37.7 ms ±   2.5 ms    [User: 162.2 ms, System: 327.0 ms]
-  Range (min … max):    33.3 ms …  48.8 ms    1000 runs
-```
-#### pvf
-```
-Benchmark 1: ./target/release/pff pvf
-  Time (mean ± σ):      28.3 ms ±   2.7 ms    [User: 117.7 ms, System: 282.0 ms]
-  Range (min … max):    25.4 ms …  41.0 ms    1000 runs
- 
-  Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
+  Time (mean ± σ):      36.9 ms ±   1.5 ms    [User: 162.6 ms, System: 324.8 ms]
+  Range (min … max):    33.4 ms …  42.9 ms    1000 runs
 ```
 #### pff
 ```
 Benchmark 1: ./target/release/pff find -t 84 -tdl 2048 -h Document /run/media/pt/gen4_test/pt/Documents
-  Time (mean ± σ):      32.7 ms ±   1.9 ms    [User: 91.4 ms, System: 290.5 ms]
-  Range (min … max):    30.3 ms …  47.0 ms    1000 runs
+  Time (mean ± σ):      32.0 ms ±   1.1 ms    [User: 90.6 ms, System: 283.9 ms]
+  Range (min … max):    30.1 ms …  41.9 ms    1000 runs
  
   Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
 ```
@@ -76,12 +66,6 @@ Benchmark 1: fd -I -H --color never js /run/media/pt/gen4_test/pt
   Time (mean ± σ):     139.9 ms ±   8.8 ms    [User: 672.2 ms, System: 1251.4 ms]
   Range (min … max):   127.9 ms … 176.2 ms    1000 runs
 ```
-#### pvf
-```
-Benchmark 1: ./target/release/pff pvf
-  Time (mean ± σ):     147.7 ms ±   9.1 ms    [User: 549.0 ms, System: 1236.7 ms]
-  Range (min … max):   133.2 ms … 195.0 ms    1000 runs
-```
 #### pff
 ```
 Benchmark 1: ./target/release/pff find -t 84 -tdl 2048 -h js /run/media/pt/gen4_test/pt
@@ -90,7 +74,7 @@ Benchmark 1: ./target/release/pff find -t 84 -tdl 2048 -h js /run/media/pt/gen4_
 ```
 
 ### Sorting
-The alternative programs don't have in-built sort functionality afaik. You can pipe their output to the unix `sort` command, but this increases the time taken to ~2s for the "Large" test.
+The alternative programs don't have in-built sort functionality as far as I know. You can pipe their output to the unix `sort` command, but this increases the time taken to ~2s for the "Large" test.
 
 `pff` has an in-built `-s` flag that sorts the output with a comparatively minor time penalty, the average execution times from enabling this option are:
 - large: 117.6ms -> 177.6ms (33.78% slower)
