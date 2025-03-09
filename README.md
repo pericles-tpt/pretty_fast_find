@@ -7,7 +7,7 @@ WARNING: This isn't a feature complete `find` alternative and most of the functi
 `pff` does breadth-first, iterative traversals of a list of directories up to a limit (specified by the `-tdl` parameter). It uses `rayon` to multi-thread those traversals up to a thread limit (specified by the `-t` parameter).
 
 ## Current Performance (benchmarked with `hyperfine`, with `--warmup 250`) 
-The following are the results of benchmarking this tool against `fd`, `bfs` and `find`
+The following are the results of benchmarking this tool against `fd` (v10.1.0), `bfs` (v4.0.4) and `find` (v4.10.0).
 
 ### System
 - Ryzen 9800X3D (8C/16T, 96MB L3 cache)
