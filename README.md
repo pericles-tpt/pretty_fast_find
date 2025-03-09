@@ -76,11 +76,11 @@ Benchmark 1: ./target/release/pff find -t 84 -tdl 2048 -h s /run/media/pt/gen4_t
 ```
 
 ### Sorting
-The alternative programs don't have in-built sort functionality as far as I know. You can pipe their output to the unix `sort` command, but this increases the time taken for each to ~630ms for the "Large" test.
+The alternative programs don't have in-built sort functionality as far as I know. You can pipe their output to the unix `sort` command, but this increases the time taken for each by ~630ms for the "Large" test.
 
 `pff` has an in-built `-s` flag that sorts the output with a relatively minor time penalty, the average execution times from enabling this option are:
+- small: 10.0ms -> 10.1ms (1.00% slower)
 - large: 11.6ms -> 29.2ms (151.72% slower)
-- small: 10.0ms -> 10.0ms (1.00% slower)
 
 ### CPU Usage
 Although I didn't quantitatively measure it, `pff` appeared to have lower CPU usage than `fd`. On the other hand the `find`/`bfs` commands had lower CPU usage than `pff` but also had significantly worse performance.
