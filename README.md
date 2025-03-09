@@ -17,20 +17,19 @@ The following are the results of benchmarking this tool against `fd` (v10.1.0), 
 ### Small Number of Results (543 results)
 Description: Looking for file names containing "clang"
 
-Winner: `pff` is 25.37% faster than 2nd place, `fd`
-#### find
+#### find (9.93x slower)
 ```
 Benchmark 1: find /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0 -name '*clang*'
   Time (mean ± σ):      93.9 ms ±   2.8 ms    [User: 41.8 ms, System: 51.8 ms]
   Range (min … max):    89.0 ms … 106.3 ms    1000 runs
 ```
-#### bfs
+#### bfs (3.31x slower)
 ```
 Benchmark 1: bfs -name '*clang*' -nocolor /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      33.1 ms ±   1.4 ms    [User: 36.5 ms, System: 63.7 ms]
   Range (min … max):    30.7 ms …  38.3 ms    1000 runs
 ```
-#### fd
+#### fd (1.34x slower)
 ```
 Benchmark 1: fd -I -H --color never -s clang /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      13.4 ms ±   0.8 ms    [User: 62.9 ms, System: 76.4 ms]
@@ -47,20 +46,19 @@ Benchmark 1: ./target/release/pff find -t 84 -tdl 2048 -h clang /run/media/pt/ge
 ### Large Number of Results (107410 results)
 Description: Looking for file names containing "s"
 
-Winner: `pff` is 27.04% faster than 2nd place, `fd`
-#### find
+#### find (8.13x slower)
 ```
 Benchmark 1: find /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0 -name '*s*'
   Time (mean ± σ):      93.5 ms ±   2.5 ms    [User: 41.7 ms, System: 51.5 ms]
   Range (min … max):    88.9 ms … 106.0 ms    1000 runs
 ```
-#### bfs
+#### bfs (2.84x slower)
 ```
 Benchmark 1: bfs -name '*s*' -nocolor /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      32.7 ms ±   1.3 ms    [User: 36.0 ms, System: 63.7 ms]
   Range (min … max):    30.7 ms …  38.1 ms    1000 runs
 ```
-#### fd
+#### fd (1.38x slower)
 ```
 Benchmark 1: fd -I -H --color never -s s /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      15.9 ms ±   0.8 ms    [User: 66.0 ms, System: 76.3 ms]
