@@ -143,11 +143,6 @@ Benchmark 1: ./target/release/pff find -h s /home/pt/pff_test/llvm-project-llvmo
   Range (min … max):    36.1 ms …  47.2 ms    1000 runs
 ```
 
-### Performance Characteristics
-`pff` has been observed to perform worse than alternatives in a benchmark scenario, when running on a heavily CPU throttled and memory bandwidth limited machine. This was observed on an Acer B115, which is a passively cooled, pentium n3530, single channel memory laptop.
-
-That system's results were not included as single channel, severely thermally constrained computer are uncommon and less representative than the results above.
-
 ### Sorting
 The alternative programs don't have in-built sort functionality as far as I know. You can pipe their output to the unix `sort` command, but this increases the time taken for each by ~630ms for the "Large" test.
 
