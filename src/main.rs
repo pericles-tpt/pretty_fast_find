@@ -20,11 +20,7 @@ const HELP_TEXT: &str = "usage: find [TARGET SUBSTRING] [ROOT FIND DIRECTORY]
 -tdl        (default: 256) Specify the minimum number of READDIRs per thread (if not enough dirs are found, this is ignored)";
 
 lazy_static! {
-    static ref VALID_COMMAND_OPTIONS: HashMap<&'static str, HashSet<&'static str>> = {
-        let mut map = HashMap::new();
-        map.insert("find", HashSet::from_iter(vec!["-t", "-tdl", "-h", "-s"]));
-        map
-    };
+    static ref VALID_COMMAND_OPTIONS: Vec<&'static str> = vec!["-t", "-tdl", "-h", "-s"];
 }
 
 fn main() {
@@ -55,7 +51,7 @@ fn main() {
             let mut thread_add_dir_limit = 512;
             let mut search_hidden = false;
             let mut sorted = false;
-            let arg_eval_res = eval_optional_args("find", optional_args, &mut show_perf_info, &mut memory_limit, &mut min_diff_bytes, &mut num_threads, &mut thread_add_dir_limit, &mut search_hidden, &mut sorted);
+            let arg_eval_res = eval_optional_args(optional_args, &mut num_threads, &mut thread_add_dir_limit, &mut search_hidden, &mut sorted);
             if arg_eval_res.is_err() {
                 eprintln!("invalid argument provided: {}", arg_eval_res.err().unwrap());
                 return;
@@ -94,8 +90,7 @@ fn main() {
             println!("{}", HELP_TEXT)
         }
         _ => {
-            let valid_commands: Vec<&str> = VALID_COMMAND_OPTIONS.keys().map(|k| {*k}).collect();
-            eprintln!("invalid command '{}' provided, must be one of: {}", cmd, valid_commands.join(", "));
+            eprintln!("invalid command '{}' provided, must be one of: {}", cmd, VALID_COMMAND_OPTIONS.join(", "));
             return;
         }
     }
@@ -111,66 +106,58 @@ fn validate_get_pathbuf(p: &String) -> std::io::Result<PathBuf> {
 }
 
 
-fn eval_optional_args(cmd: &str, args: Vec<&&String>, show_perf_info: &mut bool, memory_limit: &mut usize, min_diff_bytes: &mut i64, num_threads: &mut usize, thread_add_dir_limit: &mut usize, show_hidden: &mut bool, sorted: &mut bool) -> std::io::Result<()> {  
+fn eval_optional_args(args: Vec<&&String>, num_threads: &mut usize, thread_add_dir_limit: &mut usize, show_hidden: &mut bool, sorted: &mut bool) -> std::io::Result<()> {  
     let mut i = 0;
     while i < args.len() {
         let before_directory_args = i < args.len() - 2;
         let a = args[i].as_str();
-        if before_directory_args && !VALID_COMMAND_OPTIONS.get(cmd).unwrap().contains(a) {
-            let valid_params: Vec<_> = VALID_COMMAND_OPTIONS.get(cmd).unwrap().clone().into_iter().collect();
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("invalid parameter '{}' provided for {} command, must be one of: {}", a, cmd, valid_params.join(", "))));
+        if before_directory_args && !VALID_COMMAND_OPTIONS.contains(&a) {
+            let valid_params: Vec<_> = VALID_COMMAND_OPTIONS.clone().into_iter().collect();
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("invalid parameter '{}' provided for find command, must be one of: {}", a, valid_params.join(", "))));
         }
     
-        match cmd {
-            "find" => 'find: {
-                // NO VALUE OPTIONS
-                let mut is_no_val_opt = true;
-                match a {
-                    "-h" => {
-                        *show_hidden = true;
-                    }
-                    "-s" => {
-                        *sorted = true;
-
-                    }
-                    _ => {is_no_val_opt = false;}
-                }
-                if is_no_val_opt {
-                    break 'find;
-                }
-
-                // ONE VALUE OPTIONS
-                i += 1;
-                if i >= args.len() {
-                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("missing additional argument for '{}' flag", a)));
-                }
-                match a {
-                    "-t" => {
-                        let maybe_threads: Result<usize, ParseIntError> = args[i].parse();
-                        if maybe_threads.is_err() || maybe_threads.clone().unwrap() < 1 {
-                            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid thread argument, must be a non-negative integer"));
-                        }
-                        *num_threads = maybe_threads.unwrap();
-                    }
-                    "-tdl" => {
-                        let maybe_thread_add_dir_limit: Result<usize, ParseIntError> = args[i].parse();
-                        if maybe_thread_add_dir_limit.is_err() || maybe_thread_add_dir_limit.clone().unwrap() < 1 {
-                            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid thread add dir limit argument, must be a non-negative integer"));
-                        }
-                        *thread_add_dir_limit = maybe_thread_add_dir_limit.unwrap();
-                    }
-                    _ => {
-                        if before_directory_args {
-                            return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("unimplemented parameter: {}, for command: {}", a, cmd)));
-                        }
-                    }
-                }
+        // NO VALUE OPTIONS
+        let mut is_no_val_opt = true;
+        match a {
+            "-h" => {
+                *show_hidden = true;
             }
-            _ => {
-                return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("unimplemented command: {}", cmd)));
+            "-s" => {
+                *sorted = true;
+
             }
+            _ => {is_no_val_opt = false;}
+        }
+        if is_no_val_opt {
+            break;
         }
 
+        // ONE VALUE OPTIONS
+        i += 1;
+        if i >= args.len() {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("missing additional argument for '{}' flag", a)));
+        }
+        match a {
+            "-t" => {
+                let maybe_threads: Result<usize, ParseIntError> = args[i].parse();
+                if maybe_threads.is_err() || maybe_threads.clone().unwrap() < 1 {
+                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid thread argument, must be a non-negative integer"));
+                }
+                *num_threads = maybe_threads.unwrap();
+            }
+            "-tdl" => {
+                let maybe_thread_add_dir_limit: Result<usize, ParseIntError> = args[i].parse();
+                if maybe_thread_add_dir_limit.is_err() || maybe_thread_add_dir_limit.clone().unwrap() < 1 {
+                    return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid thread add dir limit argument, must be a non-negative integer"));
+                }
+                *thread_add_dir_limit = maybe_thread_add_dir_limit.unwrap();
+            }
+            _ => {
+                if before_directory_args {
+                    return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("unimplemented parameter: {}, for find command", a)));
+                }
+            }
+        }
         i += 1;
     }
  
