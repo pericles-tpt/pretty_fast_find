@@ -43,12 +43,8 @@ fn main() {
             let num_args = optional_args.len();
 
             // Get optional params
-            let mut num_threads = 0;
-            let mut memory_limit: usize = 0;
-            // let mut is_recursive = false;
-            let mut show_perf_info = false;
-            let mut min_diff_bytes: i64 = 0;
-            let mut thread_add_dir_limit = 512;
+            let mut num_threads = 84;
+            let mut thread_add_dir_limit = 2048;
             let mut search_hidden = false;
             let mut sorted = false;
             let arg_eval_res = eval_optional_args(optional_args, &mut num_threads, &mut thread_add_dir_limit, &mut search_hidden, &mut sorted);
