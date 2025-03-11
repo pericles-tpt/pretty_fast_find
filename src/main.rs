@@ -11,7 +11,7 @@ mod walk;
 
 use find::find;
 
-const DEFAULT_NUM_THREADS: usize = 64;
+const DEFAULT_NUM_THREADS: usize = 84;
 const DEFAULT_FD_LIMIT: usize = 2048;
 
 #[derive(Clone)]
