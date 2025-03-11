@@ -18,56 +18,56 @@ The following are the results of benchmarking this tool against `fd` (v10.1.0), 
 #### Small Number of Results (543 results)
 Description: Looking for file names containing "clang"
 
-##### find (9.67x slower)
+##### find (9.49x slower)
 ```
 Benchmark 1: find /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0 -name '*clang*'
   Time (mean ± σ):      93.9 ms ±   2.8 ms    [User: 41.8 ms, System: 51.8 ms]
   Range (min … max):    89.0 ms … 106.3 ms    1000 runs
 ```
-##### bfs (3.42x slower)
+##### bfs (3.34x slower)
 ```
 Benchmark 1: bfs -name '*clang*' -nocolor /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      33.1 ms ±   1.4 ms    [User: 36.5 ms, System: 63.7 ms]
   Range (min … max):    30.7 ms …  38.3 ms    1000 runs
 ```
-##### fd (1.38x slower)
+##### fd (1.35x slower)
 ```
 Benchmark 1: fd -I -H --color never -s clang /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      13.4 ms ±   0.8 ms    [User: 62.9 ms, System: 76.4 ms]
   Range (min … max):    11.4 ms …  19.5 ms    1000 runs
 ```
-##### pff (NOTE: Set custom `-t` parameter of 64, as it performs better)
+##### pff
 ```
-Benchmark 1: ./target/release/pff -t 64 clang /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
-  Time (mean ± σ):       9.7 ms ±   0.3 ms    [User: 35.5 ms, System: 66.4 ms]
-  Range (min … max):     9.0 ms …  11.9 ms    1000 runs
+Benchmark 1: ./target/release/pff clang /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
+  Time (mean ± σ):       9.9 ms ±   0.3 ms    [User: 37.3 ms, System: 66.4 ms]
+  Range (min … max):     9.0 ms …  11.5 ms    1000 runs
 ```
 #### Large Number of Results (107410 results)
 Description: Looking for file names containing "s"
 
-##### find (7.99x slower)
+##### find (7.72x slower)
 ```
 Benchmark 1: find /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0 -name '*s*'
   Time (mean ± σ):      93.5 ms ±   2.5 ms    [User: 41.7 ms, System: 51.5 ms]
   Range (min … max):    88.9 ms … 106.0 ms    1000 runs
 ```
-##### bfs (2.79x slower)
+##### bfs (2.70x slower)
 ```
 Benchmark 1: bfs -name '*s*' -nocolor /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      32.7 ms ±   1.3 ms    [User: 36.0 ms, System: 63.7 ms]
   Range (min … max):    30.7 ms …  38.1 ms    1000 runs
 ```
-##### fd (1.36x slower)
+##### fd (1.32x slower)
 ```
 Benchmark 1: fd -I -H --color never -s s /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      15.9 ms ±   0.8 ms    [User: 66.0 ms, System: 76.3 ms]
   Range (min … max):    13.9 ms …  22.2 ms    1000 runs
 ```
-##### pff (NOTE: Set custom `-t` parameter of 64, as it performs better)
+##### pff
 ```
-Benchmark 1: ./target/release/pff -t 64 s /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
-  Time (mean ± σ):      11.7 ms ±   0.4 ms    [User: 51.5 ms, System: 70.8 ms]
-  Range (min … max):    10.6 ms …  14.9 ms    1000 runs
+Benchmark 1: ./target/release/pff s /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
+  Time (mean ± σ):      12.1 ms ±   0.4 ms    [User: 52.9 ms, System: 71.5 ms]
+  Range (min … max):    11.0 ms …  14.0 ms    1000 runs
 ```
 
 ### System 2 (HP 800 G5 DM)
