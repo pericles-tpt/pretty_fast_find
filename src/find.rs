@@ -128,7 +128,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         return Ok(Vec::new())
     }
 
-    all_results.sort_by(|a, b| {
+    all_results.par_sort_by(|a, b| {
         return a.s_path.cmp(&b.s_path);
     });
     let result_strings = all_results.into_iter().map(|s|{
