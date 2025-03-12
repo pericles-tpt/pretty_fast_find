@@ -12,6 +12,7 @@ use crate::walk::walk_match_until_limit;
 #[derive(Clone, Debug)]
 pub struct FoundFile {
     pub s_path: String,
+    pub is_file: bool,
     pub is_symlink: bool,
     pub is_hidden: bool,
 }

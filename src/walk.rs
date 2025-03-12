@@ -33,6 +33,7 @@ pub fn walk_match_until_limit(initial_dirs: &mut Vec<std::path::PathBuf>, limit:
             parent_path_string.push('/');
             let ent = FoundFile {
                 s_path: parent_path_string,
+                is_file: false,
                 is_symlink: false,
                 is_hidden: parent_hidden,
             };
@@ -46,22 +47,23 @@ pub fn walk_match_until_limit(initial_dirs: &mut Vec<std::path::PathBuf>, limit:
             let Ok(ft) = val.file_type() else { continue };
             f_idx += 1;
             
-            if ft.is_dir() {
-                dir_q.push(val.path());
+            if ft.is_file() || ft.is_symlink() {
+                let file_name = val.file_name();
+                if (is_match_exact && file_name.as_os_str() == match_exact.unwrap()) || 
+                   (!is_match_exact && match_rx.is_match(file_name.as_bytes())) {
+                    let file_path_string = val.path().into_os_string().into_string().unwrap();
+                    let ent = FoundFile {
+                        s_path: file_path_string,
+                        is_file: ft.is_file(),
+                        is_symlink: ft.is_symlink(),
+                        is_hidden: parent_hidden || file_name.as_bytes().starts_with(&['.' as u8]),
+                    };
+                    matches.push(ent);
+                }
                 continue;
             }
 
-            let file_name = val.file_name();
-            if (is_match_exact && file_name.as_os_str() == match_exact.unwrap()) || 
-               (!is_match_exact && match_rx.is_match(file_name.as_bytes())) {
-                let file_path_string = val.path().into_os_string().into_string().unwrap();
-                let ent = FoundFile {
-                    s_path: file_path_string,
-                    is_symlink: ft.is_symlink(),
-                    is_hidden: parent_hidden || file_name.as_bytes().starts_with(&['.' as u8]),
-                };
-                matches.push(ent);
-            }
+            dir_q.push(val.path());
         }
     }
 
