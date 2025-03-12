@@ -7,8 +7,8 @@ use crate::find::FoundFile;
 
 const HIDDEN_RX_STR: &str = r".*\/\..*";
 
-pub fn walk_match_until_limit(initial_dirs: Vec<std::path::PathBuf>, limit: usize, match_rx: Regex, match_exact: Option<&OsStr>) -> std::io::Result<(Vec<PathBuf>, Vec<FoundFile>)> {
-    let mut dir_q: Vec<PathBuf> = initial_dirs;
+pub fn walk_match_until_limit(initial_dirs: &mut Vec<std::path::PathBuf>, limit: usize, match_rx: Regex, match_exact: Option<&OsStr>) -> std::io::Result<(Vec<PathBuf>, Vec<FoundFile>)> {
+    let mut dir_q: Vec<PathBuf> = std::mem::take(initial_dirs);
     let mut matches: Vec<FoundFile>;
     
     // Actual limit should be min(limit, some.len())

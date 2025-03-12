@@ -1,5 +1,6 @@
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
+use rayon::slice::ParallelSliceMut;
 use regex::bytes::Regex;
 use std::ffi::OsStr;
 use std::io::{Error, Write};
@@ -14,6 +15,8 @@ pub struct FoundFile {
     pub is_symlink: bool,
     pub is_hidden: bool,
 }
+
+const FIRST_WALK_LIMIT: usize = 256;
 
 pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Vec<String>, Error> {
     if cfg.num_threads < 2 {
@@ -42,7 +45,8 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     }
     
     // Find multiple directory paths from `root`, to distribute them between threads later
-    let maybe_initial_paths = walk_match_until_limit(vec![root], 2 * cfg.num_threads, regex_target.clone(), exact_match_target);
+    let mut initial_dirs = vec![root];
+    let maybe_initial_paths = walk_match_until_limit(&mut initial_dirs, FIRST_WALK_LIMIT, regex_target.clone(), exact_match_target);
     let Ok((mut paths_to_distribute, mut all_results)) = maybe_initial_paths else {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read root path: {:?}", maybe_initial_paths.err())))
     };
@@ -70,7 +74,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     loop {
         // Start "walk" on auxiliary threads
         let new_dirs_and_results: (Vec<Vec<PathBuf>>, Vec<Vec<FoundFile>>) = paths_per_thread.par_iter_mut().map(|p| {
-            let Ok((maybe_send_to_main, mut thread_results)) = walk_match_until_limit(p.to_vec(), cfg.file_dir_limit, regex_target.clone(), exact_match_target) 
+            let Ok((maybe_send_to_main, mut thread_results)) = walk_match_until_limit(p, cfg.file_dir_limit, regex_target.clone(), exact_match_target) 
             else {
                 return (vec![], vec![]);
             };
