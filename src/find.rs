@@ -54,24 +54,15 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         print_walk_results(&all_results);
     }
 
-    // Distribute paths between threads s.t. threads spawned later get some "low depth" paths
-    // EXAMPLE: all_paths_len = 24, num_threads = 8 -> thread_0_paths = [all_paths[0], all_paths[8], all_paths[16]]
-    let max_num_paths_per_thread = (paths_to_distribute.len() / cfg.num_threads) + 1;
-    let mut paths_per_thread: Vec<Vec<PathBuf>> = vec![Vec::with_capacity(max_num_paths_per_thread); cfg.num_threads];
-    let mut chunk_size = cfg.num_threads;
-    while paths_to_distribute.len() > 0 {
-        if chunk_size >= paths_to_distribute.len() {
-            chunk_size = paths_to_distribute.len();
-        }
-        let chunk: Vec<PathBuf> = paths_to_distribute.drain(0..chunk_size).collect();
-        
-        for j in 0..chunk.len() {
-            paths_per_thread[j].push(chunk[j].clone());
-        }
-    }
-
     // Main thread loop
     loop {
+        // Redistribute paths
+        let mut curr_num_threads = cfg.num_threads;
+        if paths_to_distribute.len() < curr_num_threads {
+            curr_num_threads = paths_to_distribute.len();
+        }
+        let mut paths_per_thread = distribute_paths_per_thread(&mut paths_to_distribute, curr_num_threads);
+
         // Start "walk" on auxiliary threads
         let new_dirs_and_results: (Vec<Vec<PathBuf>>, Vec<Vec<FoundFile>>) = paths_per_thread.par_iter_mut().map(|p| {
             let Ok((maybe_send_to_main, mut thread_results)) = walk_match_until_limit(p, cfg.file_dir_limit, regex_target.clone(), exact_match_target) 
@@ -102,25 +93,6 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         if paths_to_distribute.len() == 0 {
             break;
         }
-        
-        // "Fair" distribution of paths doesn't matter as much in the main loop, so paths are assigned to threads sequentially here
-        let mut curr_num_threads = cfg.num_threads;
-        if paths_to_distribute.len() < curr_num_threads {
-            curr_num_threads = paths_to_distribute.len();
-        }
-        paths_per_thread = Vec::with_capacity(curr_num_threads);
-        let min_paths_per_thread = paths_to_distribute.len() / curr_num_threads;
-        let mut rem_paths = paths_to_distribute.len() - (min_paths_per_thread * curr_num_threads);
-        while paths_to_distribute.len() > 0 {
-            let mut num_thread_paths = min_paths_per_thread;
-            if rem_paths > 0 {
-                num_thread_paths += 1;
-                rem_paths -= 1;
-            }
-            
-            let paths = paths_to_distribute.drain(0..num_thread_paths).collect();
-            paths_per_thread.push(paths);
-        }
     }
     
     // Not sorted -> Threads handle printing so nothing to return
@@ -148,4 +120,25 @@ fn print_walk_results(results: &Vec<FoundFile>) {
     }
     let output_str = format!("{}\n", lines.join("\n"));
     let _ = std::io::stdout().write(output_str.as_bytes());
+}
+
+fn distribute_paths_per_thread(paths_to_distribute_and_free: &mut Vec<PathBuf>, num_threads: usize) -> Vec<Vec<PathBuf>> {
+    // distribute paths such that each thread gets a "fair" allocation of low and high index elements
+    let max_num_paths_per_thread = (paths_to_distribute_and_free.len() / num_threads) + 1;
+    let mut paths_per_thread: Vec<Vec<PathBuf>> = vec![Vec::with_capacity(max_num_paths_per_thread); num_threads];
+    for i in 0..num_threads {
+        for j in 0..max_num_paths_per_thread {
+            let take_idx = (j * num_threads) + i;
+            if take_idx >= paths_to_distribute_and_free.len() {
+                break;
+            }
+            paths_per_thread[i].push(paths_to_distribute_and_free[take_idx].clone());
+        }
+    }
+    
+    // the original data is no longer needed, free it
+    paths_to_distribute_and_free.clear();
+    paths_to_distribute_and_free.shrink_to_fit();
+
+    return paths_per_thread;
 }
