@@ -135,11 +135,14 @@ Comparing these (rough) results to the benchmarks above, `pff`'s performance imp
 NOTE: These results only apply for unsorted runs. Since each thread can print its results and then discard them immediately. However, in order to sort results `pff` needs to store every result until the end of the program in order to sort and print them all out at once. As a result, `pff` has been observed to use as much as 60MB of memory when sorting in the "large" benchmark (albeit this usage occurs for < 20ms).
 
 ### Sorting
-The alternative programs don't have in-built sort functionality as far as I know. You can pipe their output to the unix `sort` command, but this increases the time taken for each by ~630ms for the "Large" test.
+The alternative programs don't have in-built sort functionality as far as I know. You can pipe their output to the unix `sort` command, but this increases the time taken for each program by ~645ms for the "large" test.
 
-`pff` has an in-built `-s` flag that sorts the output with a relatively minor time penalty, the average execution times from enabling this option (on System 1) are:
-- small: 10.0ms -> 10.1ms (1.00% slower)
-- large: 11.6ms -> 29.2ms (151.72% slower)
+`pff` has an in-built `-s` flag that sorts the output with a less severe time penalty, the average execution times from enabling this option (on System 1) are:
+
+| Benchmark Type | Unsorted | Sorted | Time Penalty |
+| -------------- | -------- | ------ | ------------ |
+| small          | 9.2ms    | 9.5ms  | 1.03x        |
+| large          | 10.8ms   | 21.6ms | 2.00x        |
 
 ### CPU Usage
 Although I didn't quantitatively measure it, `pff` appeared to have lower CPU usage than `fd`. On the other hand the `find`/`bfs` commands had lower CPU usage than `pff` but also had significantly worse performance.
