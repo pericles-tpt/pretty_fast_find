@@ -71,15 +71,18 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Length Checks / Help
     let default_ret = (String::new(), PathBuf::new());
     if args.len() == 0 {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "insufficient arguments for `pff`, expected either: `pff --help` or `pff [PATTERN] [ROOT FIND DIRECTORY]`"));
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "insufficient arguments for `pff`, expected: `pff --help`, `pff --version` or `pff [PATTERN] [ROOT FIND DIRECTORY]`"));
     }
     if args.len() == 1 {
         match args[0].as_str() {
             "--help" => {
                 print_help_text();
             }
+            "--version" => {
+                println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+            }
             _ => {
-                return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "insufficient arguments for `pff`, expected either: `pff --help` or `pff [PATTERN] [ROOT FIND DIRECTORY]`"));
+                return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "insufficient arguments for `pff`, expected: `pff --help`, `pff --version` or `pff [PATTERN] [ROOT FIND DIRECTORY]`"));
             }
         }
         return Ok(default_ret);
@@ -100,7 +103,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Optional Args
     let mut i = 0;
     let first_non_optional_arg_idx = args.len() - 2;
-    let valid_command_options = vec!["-h", "-sl", "-s", "-eq", "-t", "-fdl", "--help"];
+    let valid_command_options = vec!["-h", "-sl", "-s", "-eq", "-t", "-fdl", "--help", "--version"];
     while i < first_non_optional_arg_idx {
         let curr = args[i].as_str();
         if !valid_command_options.contains(&curr) {
@@ -165,10 +168,12 @@ fn print_help_text() {
 Usage: pff [options] [pattern] [path]
 Optional Arguments:
     --help      Prints help
+    --version   Prints version
 
     -h          Hides hidden dirs/files (i.e. entries where name starts with '.')
     -sl         Hides symlinks
-    -s          Sorts output (reduces performance, adding '-h' and '-sl' sometimes improves this)
+    -s          Sorts output (reduces performance and increases memory usage, adding '-h' and '-sl'
+                sometimes improves this)
     -eq         Match EXACTLY on 'pattern', faster than (default) regex check for exact matching
 
     -t   <num>  (default:    {}) Specify the number of threads, MUST BE >= 2
