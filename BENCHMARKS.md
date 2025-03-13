@@ -1,4 +1,4 @@
-## Benchmarks [OUTDATED, PRIOR COMMIT IMPACTED PERFORMANCE] (using `hyperfine`, with `--warmup 250`) 
+## Benchmarks (using `hyperfine`, with `--warmup 250`) 
 The following are the results of benchmarking this tool against `fd` (v10.1.0), `bfs` (v4.0.4) and `find` (v4.10.0). The sample folder used for testing is [llvm-project v20.1.0 source code](https://github.com/llvm/llvm-project/releases/tag/llvmorg-20.1.0), it has ~150k files and ~14.5k folders (according to `find`).
 
 ### System 1
@@ -10,7 +10,7 @@ The following are the results of benchmarking this tool against `fd` (v10.1.0), 
 #### Small Number of Results (543 results)
 Description: Looking for file names containing "clang"
 
-##### find (10.25x slower)
+##### find (10.36x slower)
 ```
 Benchmark 1: find /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0 -name '*clang*'
   Time (mean ± σ):      91.2 ms ±   1.4 ms    [User: 42.5 ms, System: 48.4 ms]
@@ -18,14 +18,14 @@ Benchmark 1: find /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0 -name '*cl
  
   Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
 ```
-##### bfs (3.73x slower)
+##### bfs (3.77x slower)
 ```
 Benchmark 1: bfs -name '*clang*' -nocolor /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      33.2 ms ±   1.3 ms    [User: 36.9 ms, System: 62.6 ms]
   Range (min … max):    30.9 ms …  38.0 ms    1000 runs
 
 ```
-##### fd (1.51x slower)
+##### fd (1.52x slower)
 ```
 Benchmark 1: fd -I -H --color never -s clang /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      13.4 ms ±   0.8 ms    [User: 63.2 ms, System: 75.7 ms]
@@ -34,13 +34,13 @@ Benchmark 1: fd -I -H --color never -s clang /run/media/pt/gen4_test/llvm-projec
 ##### pff
 ```
 Benchmark 1: ./target/release/pff clang /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
-  Time (mean ± σ):       8.9 ms ±   0.3 ms    [User: 32.7 ms, System: 65.7 ms]
-  Range (min … max):     8.2 ms …  10.3 ms    1000 runs
+  Time (mean ± σ):       8.8 ms ±   0.2 ms    [User: 32.9 ms, System: 65.8 ms]
+  Range (min … max):     8.1 ms …   9.6 ms    1000 runs
 ```
 #### Large Number of Results (107410 results)
 Description: Looking for file names containing "s"
 
-##### find (8.79x slower)
+##### find (8.87x slower)
 ```
 Benchmark 1: find /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0 -name '*s*'
   Time (mean ± σ):      91.4 ms ±   1.5 ms    [User: 42.1 ms, System: 49.0 ms]
@@ -48,13 +48,13 @@ Benchmark 1: find /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0 -name '*s*
  
   Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
 ```
-##### bfs (3.19x slower)
+##### bfs (3.22x slower)
 ```
 Benchmark 1: bfs -name '*s*' -nocolor /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      33.2 ms ±   1.3 ms    [User: 36.6 ms, System: 63.4 ms]
   Range (min … max):    31.1 ms …  38.3 ms    1000 runs
 ```
-##### fd (1.54x slower)
+##### fd (1.55x slower)
 ```
 Benchmark 1: fd -I -H --color never -s s /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      16.0 ms ±   0.8 ms    [User: 65.9 ms, System: 75.5 ms]
@@ -63,8 +63,8 @@ Benchmark 1: fd -I -H --color never -s s /run/media/pt/gen4_test/llvm-project-ll
 ##### pff
 ```
 Benchmark 1: ./target/release/pff s /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0
-  Time (mean ± σ):      10.4 ms ±   0.3 ms    [User: 48.0 ms, System: 68.8 ms]
-  Range (min … max):     9.6 ms …  12.1 ms    1000 runs
+  Time (mean ± σ):      10.3 ms ±   0.3 ms    [User: 48.4 ms, System: 68.4 ms]
+  Range (min … max):     9.5 ms …  11.3 ms    1000 runs
 ```
 
 ### System 2 (HP 800 G5 DM)
@@ -103,15 +103,15 @@ Benchmark 1: fd -I -H --color never -s clang /home/pt/pff_test/llvm-project-llvm
 ##### pff
 ```
 Benchmark 1: ./target/release/pff clang /home/pt/pff_test/llvm-project-llvmorg-20.1.0
-  Time (mean ± σ):      31.3 ms ±   0.9 ms    [User: 83.2 ms, System: 94.1 ms]
-  Range (min … max):    29.7 ms …  39.8 ms    1000 runs
+  Time (mean ± σ):      31.3 ms ±   1.0 ms    [User: 83.9 ms, System: 92.9 ms]
+  Range (min … max):    29.5 ms …  43.1 ms    1000 runs
  
   Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
 ```
 #### Large Number of Results (107410 results)
 Description: Looking for file names containing "s"
 
-##### find (7.24x slower)
+##### find (7.26x slower)
 ```
 Benchmark 1: find /home/pt/pff_test/llvm-project-llvmorg-20.1.0 -name '*s*'
   Time (mean ± σ):     267.1 ms ±   1.8 ms    [User: 150.5 ms, System: 116.0 ms]
@@ -119,7 +119,7 @@ Benchmark 1: find /home/pt/pff_test/llvm-project-llvmorg-20.1.0 -name '*s*'
  
   Warning: Statistical outliers were detected. Consider re-running this benchmark on a quiet system without any interferences from other programs. It might help to use the '--warmup' or '--prepare' options.
 ```
-##### bfs (2.05x slower)
+##### bfs (2.06x slower)
 ```
 Benchmark 1: bfs -name '*s*' -nocolor /home/pt/pff_test/llvm-project-llvmorg-20.1.0
   Time (mean ± σ):      75.7 ms ±   0.8 ms    [User: 95.3 ms, System: 97.9 ms]
@@ -138,8 +138,8 @@ Benchmark 1: fd -I -H --color never -s s /home/pt/pff_test/llvm-project-llvmorg-
 ##### pff
 ```
 Benchmark 1: ./target/release/pff s /home/pt/pff_test/llvm-project-llvmorg-20.1.0
-  Time (mean ± σ):      36.9 ms ±   0.9 ms    [User: 110.3 ms, System: 97.5 ms]
-  Range (min … max):    34.8 ms …  43.4 ms    1000 runs
+  Time (mean ± σ):      36.8 ms ±   0.9 ms    [User: 110.8 ms, System: 96.7 ms]
+  Range (min … max):    34.9 ms …  43.9 ms    1000 runs
 ```
 
 ### Memory Usage
@@ -163,8 +163,8 @@ The alternative programs don't have in-built sort functionality as far as I know
 
 | Benchmark Type | Unsorted | Sorted | Time Penalty |
 | -------------- | -------- | ------ | ------------ |
-| small          | 8.9ms    | 9.2ms  | 1.03x        |
-| large          | 10.4ms   | 21.2ms | 2.04x        |
+| small          | 8.8ms    | 9.1ms  | 1.03x        |
+| large          | 10.3ms   | 21.1ms | 2.05x        |
 
 ### CPU Usage
 Although I didn't quantitatively measure it, `pff` appeared to have lower CPU usage than `fd`. On the other hand the `find`/`bfs` commands had lower CPU usage than `pff` but also had significantly worse performance.
