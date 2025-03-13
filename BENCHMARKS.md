@@ -1,4 +1,4 @@
-## Benchmarks (using `hyperfine`, with `--warmup 250`) 
+## Benchmarks [OUTDATED, PRIOR COMMIT IMPACTED PERFORMANCE] (using `hyperfine`, with `--warmup 250`) 
 The following are the results of benchmarking this tool against `fd` (v10.1.0), `bfs` (v4.0.4) and `find` (v4.10.0). The sample folder used for testing is [llvm-project v20.1.0 source code](https://github.com/llvm/llvm-project/releases/tag/llvmorg-20.1.0), it has ~150k files and ~14.5k folders (according to `find`).
 
 ### System 1
