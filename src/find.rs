@@ -2,6 +2,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSliceMut;
 use regex::bytes::Regex;
+use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::io::{Error, Write};
 use std::path::PathBuf;
@@ -18,6 +19,12 @@ pub struct FoundFile {
 }
 
 const FIRST_WALK_LIMIT: usize = 256;
+const SORT_ASC: fn(a: &FoundFile, b: &FoundFile) -> Ordering = |a: &FoundFile, b: &FoundFile| {
+    return a.s_path.cmp(&b.s_path);
+};
+const SORT_DESC: fn(a: &FoundFile, b: &FoundFile) -> Ordering = |a: &FoundFile, b: &FoundFile| {
+    return a.s_path.cmp(&b.s_path).reverse();
+};
 
 pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Vec<String>, Error> {
     if cfg.num_threads < 2 {
@@ -101,9 +108,11 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         return Ok(Vec::new())
     }
 
-    all_results.par_sort_by(|a, b| {
-        return a.s_path.cmp(&b.s_path);
-    });
+    if cfg.sort_asc {
+        all_results.par_sort_by(SORT_ASC);
+    } else {
+        all_results.par_sort_by(SORT_DESC);
+    }
     let result_strings = all_results.into_iter().map(|s|{
         return s.s_path
     }).collect();

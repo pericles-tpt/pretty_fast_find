@@ -21,6 +21,7 @@ struct Config {
     show_hidden: bool,
     show_symlinks: bool,
     sorted: bool,
+    sort_asc: bool,
     equality_match: bool,
 }
 
@@ -31,6 +32,7 @@ fn main() {
         show_hidden:    true,
         show_symlinks:  true,
         sorted:         false,
+        sort_asc:       true,
         equality_match: false,
     };
 
@@ -103,7 +105,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Optional Args
     let mut i = 0;
     let first_non_optional_arg_idx = args.len() - 2;
-    let valid_command_options = vec!["-h", "-sl", "-s", "-eq", "-t", "-fdl", "--help", "--version"];
+    let valid_command_options = vec!["-hf", "-hd", "-hsl", "-hh", "-sa", "-sd", "-eq", "-t", "-fdl", "--help", "--version"];
     while i < first_non_optional_arg_idx {
         let curr = args[i].as_str();
         if !valid_command_options.contains(&curr) {
@@ -119,8 +121,12 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
             "-sl" => {
                 config.show_symlinks = false;
             }
-            "-s" => {
+            "-sa" => {
                 config.sorted = true;
+            }
+            "-sd" => {
+                config.sorted = true;
+                config.sort_asc = false;
             }
             "-eq" => {
                 config.equality_match = true;
@@ -170,13 +176,15 @@ Optional Arguments:
     --help      Prints help
     --version   Prints version
 
-    -h          Hides hidden dirs/files (i.e. entries where name starts with '.')
-    -sl         Hides symlinks
-    -s          Sorts output (reduces performance and increases memory usage, adding '-h' and '-sl'
-                sometimes improves this)
-    -eq         Match EXACTLY on 'pattern', faster than (default) regex check for exact matching
+    -eq           Match EXACTLY on 'pattern', faster than (default) regex check for exact matching
+    -sa           Sort output by path in ascending order
+    -sd           Sort output by path in descending order
 
-    -t   <num>  (default:    {}) Specify the number of threads, MUST BE >= 2
-    -fdl <num>  (default:  {}) Specify the maximum 'files + dirs' to traverse before returning
-                                 results from each thread", DEFAULT_NUM_THREADS, DEFAULT_FD_LIMIT);
+    -t   <num>    (default:    {}) Specify the number of threads, MUST BE >= 2
+    -fdl <num>    (default:  {}) Specify the maximum 'files + dirs' to traverse before returning
+                                 results from each thread
+
+NOTE: Sorting reduces performance and increases memory usage, 'hiding' results can improve this", DEFAULT_NUM_THREADS, DEFAULT_FD_LIMIT);
+}
+
 }
