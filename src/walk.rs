@@ -51,7 +51,10 @@ pub fn walk_match_until_limit(initial_dirs: &mut Vec<std::path::PathBuf>, limit:
                 let file_name = val.file_name();
                 if (is_match_exact && file_name.as_os_str() == match_exact.unwrap()) || 
                    (!is_match_exact && match_rx.is_match(file_name.as_bytes())) {
-                    let file_path_string = val.path().into_os_string().into_string().unwrap();
+                    let mut file_path_string = val.path().into_os_string().into_string().unwrap();
+                    if ft.is_symlink() {
+                        file_path_string.push_str(" (SL)");
+                    }
                     let ent = FoundFile {
                         s_path: file_path_string,
                         is_file: ft.is_file(),
