@@ -18,8 +18,10 @@ const DEFAULT_FD_LIMIT: usize = 2048;
 struct Config {
     num_threads: usize,
     file_dir_limit: usize,
-    show_hidden: bool,
+    show_files: bool,
+    show_dirs: bool,
     show_symlinks: bool,
+    show_hidden: bool,
     sorted: bool,
     sort_asc: bool,
     equality_match: bool,
@@ -29,8 +31,10 @@ fn main() {
     let mut cfg = Config {
         num_threads:    DEFAULT_NUM_THREADS,
         file_dir_limit: DEFAULT_FD_LIMIT,
-        show_hidden:    true,
+        show_files:     true,
+        show_dirs:      true,
         show_symlinks:  true,
+        show_hidden:    true,
         sorted:         false,
         sort_asc:       true,
         equality_match: false,
@@ -105,7 +109,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Optional Args
     let mut i = 0;
     let first_non_optional_arg_idx = args.len() - 2;
-    let valid_command_options = vec!["-hf", "-hd", "-hsl", "-hh", "-sa", "-sd", "-eq", "-t", "-fdl", "--help", "--version"];
+    let valid_command_options = vec!["--help", "--version", "-eq", "-hf", "-hd", "-hsl", "-hh", "-sa", "-sd", "-t", "-fdl"];
     while i < first_non_optional_arg_idx {
         let curr = args[i].as_str();
         if !valid_command_options.contains(&curr) {
@@ -115,11 +119,20 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
         // Toggle Args
         let mut is_valid_opt = true;
         match curr {
-            "-h" => {
-                config.show_hidden = false;
+            "-eq" => {
+                config.equality_match = true;
             }
-            "-sl" => {
+            "-hf" => {
+                config.show_files = false;
+            }
+            "-hd" => {
+                config.show_dirs = false;
+            }
+            "-hsl" => {
                 config.show_symlinks = false;
+            }
+            "-hh" => {
+                config.show_hidden = false;
             }
             "-sa" => {
                 config.sorted = true;
@@ -127,9 +140,6 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
             "-sd" => {
                 config.sorted = true;
                 config.sort_asc = false;
-            }
-            "-eq" => {
-                config.equality_match = true;
             }
             _ => { is_valid_opt = false; }
         }
@@ -164,6 +174,10 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
         }
         i += 1;
     }
+
+    if !config.show_files && !config.show_dirs {
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid combination of '-hd' and '-fd', can only accept one at a time"));
+    }
  
     Ok((target, root_pb))    
 }
@@ -173,10 +187,14 @@ fn print_help_text() {
 
 Usage: pff [options] [pattern] [path]
 Optional Arguments:
-    --help      Prints help
-    --version   Prints version
+    --help        Prints help
+    --version     Prints version
 
     -eq           Match EXACTLY on 'pattern', faster than (default) regex check for exact matching
+    -hf           Hides files (CANNOT be used with -hd flag)
+    -hd           Hides directories (CANNOT be used with -hf flag)
+    -hsl          Hides symlinks
+    -hh           Hides hidden dirs/files (i.e. entries where name starts with '.')
     -sa           Sort output by path in ascending order
     -sd           Sort output by path in descending order
 

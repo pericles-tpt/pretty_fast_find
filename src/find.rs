@@ -31,12 +31,14 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("invalid number of threads, '-t' MUST be >= 2")))
     }
     
-    // Filter applied if provided arguments to hide: hidden files, symlinks
+    // Filter applied if provided arguments to hide: files, directories, symlinks or hidden items
     let mut maybe_filter: Option<(fn(a: &FoundFile, cfg: &Config) -> bool, Config)> = None;
-    if !cfg.show_hidden || !cfg.show_symlinks {
+    if !cfg.show_files || !cfg.show_dirs || !cfg.show_symlinks || !cfg.show_hidden {
         maybe_filter = Some((|a: &FoundFile, cfg: &Config| {
-            return (cfg.show_hidden || !a.is_hidden) && 
-                   (cfg.show_symlinks || !a.is_symlink);
+            return  (cfg.show_files || !a.is_file) &&
+                    (cfg.show_dirs || a.is_file) &&
+                    (cfg.show_symlinks || !a.is_symlink) &&
+                    (cfg.show_hidden || !a.is_hidden);
         }, cfg.clone()))
     }
     
