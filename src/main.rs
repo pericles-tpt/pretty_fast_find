@@ -1,9 +1,6 @@
 use std::env;
-use std::ffi::OsStr;
-use std::fs::read_dir;
 use std::io::Write;
 use std::num::ParseIntError;
-use std::path::Path;
 use std::path::PathBuf;
 
 mod find;
