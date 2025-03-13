@@ -204,5 +204,3 @@ Optional Arguments:
 
 NOTE: Sorting reduces performance and increases memory usage, 'hiding' results can improve this", DEFAULT_NUM_THREADS, DEFAULT_FD_LIMIT);
 }
-
-}
