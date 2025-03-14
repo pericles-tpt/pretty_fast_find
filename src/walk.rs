@@ -153,7 +153,7 @@ fn add_label(ff: &FoundFile, label_pos: i8) -> String {
 fn generate_label(f: &FoundFile) -> String {
     let mut ret = String::from("FRR");
     if !f.is_file {
-        ret.replace_range( 0..1, "D");
+        ret.replace_range( 0..2, "D_");
     }
     if f.is_symlink {
         ret.replace_range( 1..2, "S");

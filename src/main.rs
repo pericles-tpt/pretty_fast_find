@@ -264,8 +264,8 @@ Optional Arguments:
 
     --label [<start|end>] (default: start)  Adds a label, at the start or end of each line separated by a
                                             space, indicating the file properties.
-                                            FORMAT : [F|D][R|S][R|H]
-                                            EXAMPLE: DRH -> dir regular regular, FSH -> file symlink hidden             
+                                            FORMAT : [F|D][R|S|_][R|H]
+                                            EXAMPLE: D_R -> dir regular, FSH -> file symlink hidden             
     
     -t   <num>            (default:    {})  Specify the number of threads, MUST BE >= 2
 
