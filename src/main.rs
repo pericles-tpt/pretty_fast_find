@@ -260,12 +260,15 @@ Optional Arguments:
     --sort [<asc|desc>]     (default: asc)  Sort output by path in (asc)ending or (desc)ending order. 
                                    
                                             NOTE: Sorting reduces performance and increases memory usage, 
-                                            'hiding' results can improve this
+                                            'filtering' results can improve this
 
     --label [<start|end>] (default: start)  Adds a label, at the start or end of each line separated by a
                                             space, indicating the file properties.
                                             FORMAT : [F|D][R|S|_][R|H]
-                                            EXAMPLE: D_R -> dir regular, FSH -> file symlink hidden             
+                                            EXAMPLE: D_R -> dir regular, FSH -> file symlink hidden   
+
+                                            NOTE: Labelling reduces performance and increases memory usage, 
+                                            'filtering' results can improve this
     
     -t   <num>            (default:    {})  Specify the number of threads, MUST BE >= 2
 
