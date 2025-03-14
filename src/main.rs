@@ -26,15 +26,15 @@ struct Config {
 
 fn main() {
     let mut cfg = Config {
-        num_threads:    DEFAULT_NUM_THREADS,
-        file_dir_limit: DEFAULT_FD_LIMIT,
-        show_files:     true,
-        show_dirs:      true,
-        show_symlinks:  true,
-        show_hidden:    true,
-        sorted:         false,
-        sort_asc:       true,
-        equality_match: false,
+        num_threads:        DEFAULT_NUM_THREADS,
+        file_dir_limit:     DEFAULT_FD_LIMIT,
+        show_files:         true,
+        show_dirs:          true,
+        show_symlinks:      true,
+        show_hidden:        true,
+        sorted:             false,
+        sort_asc:           true,
+        equality_match:     false,
     };
 
     let (target, root);
@@ -106,7 +106,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Optional Args
     let mut i = 0;
     let first_non_optional_arg_idx = args.len() - 2;
-    let valid_command_options = vec!["--help", "--version", "-eq", "-hf", "-hd", "-hsl", "-hh", "-sa", "-sd", "-t", "-fdl"];
+    let valid_command_options = vec!["--help", "--version", "-eq", "--filter", "--sort", "-t", "-fdl"];
     while i < first_non_optional_arg_idx {
         let curr = args[i].as_str();
         if !valid_command_options.contains(&curr) {
@@ -119,25 +119,6 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
             "-eq" => {
                 config.equality_match = true;
             }
-            "-hf" => {
-                config.show_files = false;
-            }
-            "-hd" => {
-                config.show_dirs = false;
-            }
-            "-hsl" => {
-                config.show_symlinks = false;
-            }
-            "-hh" => {
-                config.show_hidden = false;
-            }
-            "-sa" => {
-                config.sorted = true;
-            }
-            "-sd" => {
-                config.sorted = true;
-                config.sort_asc = false;
-            }
             _ => { is_valid_opt = false; }
         }
         i += 1;
@@ -149,7 +130,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
         if i + 1 >= args.len() {
             return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("missing additional argument for '{}' flag", curr)));
         }
-        let next = args[i].as_str();
+        let mut next = args[i].as_str();
         match curr {
             "-t" => {
                 let maybe_num_threads: Result<usize, ParseIntError> = next.parse();
@@ -157,6 +138,79 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
                     return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid `-t` argument, must be a non-negative integer"));
                 }
                 config.num_threads = maybe_num_threads.unwrap();
+            }
+            "--filter" => {
+                let valid_filter_options = ["f", "d", "s", "h", "nf", "nd", "ns", "nh"];
+                
+                // Hide everything, only show types from filter
+                config.show_dirs     = false;
+                config.show_files    = false;
+                config.show_symlinks = false;
+                config.show_hidden   = false;
+
+                // Duplicate counter
+                let mut fc = 0;
+                let mut dc = 0;
+                let mut sc = 0;
+                let mut hc = 0;
+                
+                while valid_filter_options.contains(&next) {
+                    let mut is_show = true;
+                    if next.starts_with("n") {
+                        is_show = false;
+                        next = &next[1..];
+                    }
+                    
+                    match next {
+                        "f" => {
+                            config.show_files = is_show;
+                            fc += 1;
+                        }
+                        "d" => {
+                            config.show_dirs = is_show;
+                            dc += 1;
+                        }
+                        "s" => {
+                            config.show_symlinks = is_show;
+                            sc += 1;
+                        }
+                        "h" => {
+                            config.show_hidden = is_show;
+                            hc += 1;
+                        }
+                        _ => {
+                            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("invalid option: '{}', provided for --filter, must be one of: {}", next, valid_filter_options.join(", "))));
+                        }
+                    }
+
+                    i += 1;
+                    if i >= args.len() {
+                        break;
+                    }
+                    next = args[i].as_str();
+                }
+                if i != args.len() {
+                    i -= 1;
+                }
+                
+                if fc > 1 || dc > 1 || sc > 1 || hc > 1 {
+                    return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid filter parameter, you cannot provide two or more of the same filter option"));
+                } else if fc > 0 && dc > 0 {
+                    return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid filter parameter, only one of 'd' and 'f' can be provided at a time"));
+                } else if fc == 0 && dc == 0 {
+                    config.show_files = true;
+                    config.show_dirs = true;
+                }
+            }
+            "--sort" => {
+                let mut is_asc = true;
+                if next == "desc" {
+                    is_asc = false;
+                } else if next != "asc" {
+                    i -= 1;
+                }
+                config.sorted = true;
+                config.sort_asc = is_asc;
             }
             "-fdl" => {
                 let maybe_file_dir_limit: Result<usize, ParseIntError> = next.parse();
@@ -171,10 +225,6 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
         }
         i += 1;
     }
-
-    if !config.show_files && !config.show_dirs {
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid combination of '-hd' and '-fd', can only accept one at a time"));
-    }
  
     Ok((target, root_pb))    
 }
@@ -184,20 +234,28 @@ fn print_help_text() {
 
 Usage: pff [options] [pattern] [path]
 Optional Arguments:
-    --help        Prints help
-    --version     Prints version
+    --help                               Prints help
+    --version                            Prints version
 
-    -eq           Match EXACTLY on 'pattern', faster than (default) regex check for exact matching
-    -hf           Hides files (CANNOT be used with -hd flag)
-    -hd           Hides directories (CANNOT be used with -hf flag)
-    -hsl          Hides symlinks
-    -hh           Hides hidden dirs/files (i.e. entries where name starts with '.')
-    -sa           Sort output by path in ascending order
-    -sd           Sort output by path in descending order
+    -eq                                  Match EXACTLY on 'pattern', faster than (default) regex check 
+                                         for exact matching
 
-    -t   <num>    (default:    {}) Specify the number of threads, MUST BE >= 2
-    -fdl <num>    (default:  {}) Specify the maximum 'files + dirs' to traverse before returning
-                                 results from each thread
+    --filter <f> [<d> [<s> [<h>]]]       Filter output to just show (f)iles, (d)irectories, (s)ymlinks 
+                                         and/or (h)idden files. Providing a 'n' before the parameter 
+                                         (e.g. 'nf') hides the item type (rather than showing it).
 
-NOTE: Sorting reduces performance and increases memory usage, 'hiding' results can improve this", DEFAULT_NUM_THREADS, DEFAULT_FD_LIMIT);
+                                         NOTE: The 'f' and 'd' options be provided together.
+    
+    --sort [<asc|desc>] (default:   asc) Sort output by path in (asc)ending or (desc)ending order. 
+                                   
+                                         NOTE: Sorting reduces performance and increases memory usage, 
+                                         'hiding' results can improve this
+    
+    -t   <num>          (default:    {}) Specify the number of threads, MUST BE >= 2
+
+    -fdl <num>          (default:  {}) Specify the maximum 'files + dirs' to traverse before returning
+                                         results from each thread
+
+", DEFAULT_NUM_THREADS, DEFAULT_FD_LIMIT);
 }
+

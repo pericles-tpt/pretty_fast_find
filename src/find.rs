@@ -32,6 +32,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     }
     
     // Filter applied if provided arguments to hide: files, directories, symlinks or hidden items
+    // TODO: "show ONLY hidden" and "show ONLY symlink" conditions are currently broken
     let mut maybe_filter: Option<(fn(a: &FoundFile, cfg: &Config) -> bool, Config)> = None;
     if !cfg.show_files || !cfg.show_dirs || !cfg.show_symlinks || !cfg.show_hidden {
         maybe_filter = Some((|a: &FoundFile, cfg: &Config| {
