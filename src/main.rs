@@ -21,6 +21,7 @@ struct Config {
     show_hidden: bool,
     sorted: bool,
     sort_asc: bool,
+    label_pos: i8, // -1 -> start, 0 -> none, 1 -> end
     equality_match: bool,
 }
 
@@ -34,6 +35,7 @@ fn main() {
         show_hidden:        true,
         sorted:             false,
         sort_asc:           true,
+        label_pos:          0,
         equality_match:     false,
     };
 
@@ -106,7 +108,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Optional Args
     let mut i = 0;
     let first_non_optional_arg_idx = args.len() - 2;
-    let valid_command_options = vec!["--help", "--version", "-eq", "--filter", "--sort", "-t", "-fdl"];
+    let valid_command_options = vec!["--help", "--version", "-eq", "--filter", "--sort", "--label", "-t", "-fdl"];
     while i < first_non_optional_arg_idx {
         let curr = args[i].as_str();
         if !valid_command_options.contains(&curr) {
@@ -212,6 +214,15 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
                 config.sorted = true;
                 config.sort_asc = is_asc;
             }
+            "--label" => {
+                let mut pos = -1;
+                if next == "end" {
+                    pos = 1;
+                } else if next != "start" {
+                    i -= 1;
+                }
+                config.label_pos = pos;
+            }
             "-fdl" => {
                 let maybe_file_dir_limit: Result<usize, ParseIntError> = next.parse();
                 if maybe_file_dir_limit.is_err() || maybe_file_dir_limit.clone().unwrap() < 1 {
@@ -234,27 +245,32 @@ fn print_help_text() {
 
 Usage: pff [options] [pattern] [path]
 Optional Arguments:
-    --help                               Prints help
-    --version                            Prints version
+    --help                                  Prints help
+    --version                               Prints version
 
-    -eq                                  Match EXACTLY on 'pattern', faster than (default) regex check 
-                                         for exact matching
+    -eq                                     Match EXACTLY on 'pattern', faster than (default) regex check 
+                                            for exact matching
 
-    --filter <f> [<d> [<s> [<h>]]]       Filter output to just show (f)iles, (d)irectories, (s)ymlinks 
-                                         and/or (h)idden files. Providing a 'n' before the parameter 
-                                         (e.g. 'nf') hides the item type (rather than showing it).
+    --filter <f> [<d> [<s> [<h>]]]          Filter output to just show (f)iles, (d)irectories, (s)ymlinks 
+                                            and/or (h)idden files. Providing a 'n' before the parameter 
+                                            (e.g. 'nf') hides the item type (rather than showing it).
 
-                                         NOTE: The 'f' and 'd' options be provided together.
+                                            NOTE: The 'f' and 'd' options be provided together.
     
-    --sort [<asc|desc>] (default:   asc) Sort output by path in (asc)ending or (desc)ending order. 
+    --sort [<asc|desc>]     (default: asc)  Sort output by path in (asc)ending or (desc)ending order. 
                                    
-                                         NOTE: Sorting reduces performance and increases memory usage, 
-                                         'hiding' results can improve this
-    
-    -t   <num>          (default:    {}) Specify the number of threads, MUST BE >= 2
+                                            NOTE: Sorting reduces performance and increases memory usage, 
+                                            'hiding' results can improve this
 
-    -fdl <num>          (default:  {}) Specify the maximum 'files + dirs' to traverse before returning
-                                         results from each thread
+    --label [<start|end>] (default: start)  Adds a label, at the start or end of each line separated by a
+                                            space, indicating the file properties.
+                                            FORMAT : [F|D][R|S][R|H]
+                                            EXAMPLE: DRH -> dir regular regular, FSH -> file symlink hidden             
+    
+    -t   <num>            (default:    {})  Specify the number of threads, MUST BE >= 2
+
+    -fdl <num>            (default:  {})  Specify the maximum 'files + dirs' to traverse before returning
+                                            results from each thread
 
 ", DEFAULT_NUM_THREADS, DEFAULT_FD_LIMIT);
 }
