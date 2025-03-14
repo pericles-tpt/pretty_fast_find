@@ -253,9 +253,9 @@ Optional Arguments:
 
     --filter <f> [<d> [<s> [<h>]]]          Filter output to just show (f)iles, (d)irectories, (s)ymlinks 
                                             and/or (h)idden files. Providing a 'n' before the parameter 
-                                            (e.g. 'nf') hides the item type (rather than showing it).
+                                            (e.g. 'nf') hides that item type.
 
-                                            NOTE: The 'f' and 'd' options be provided together.
+                                            NOTE: The 'f' and 'd' options CANNOT be provided together.
     
     --sort [<asc|desc>]     (default: asc)  Sort output by path in (asc)ending or (desc)ending order. 
                                    
@@ -264,6 +264,7 @@ Optional Arguments:
 
     --label [<start|end>] (default: start)  Adds a label, at the start or end of each line separated by a
                                             space, indicating the file properties.
+
                                             FORMAT : [F|D][R|S|_][R|H]
                                             EXAMPLE: D_R -> dir regular, FSH -> file symlink hidden   
 
@@ -271,7 +272,6 @@ Optional Arguments:
                                             'filtering' results can improve this
     
     -t   <num>            (default:    {})  Specify the number of threads, MUST BE >= 2
-
     -fdl <num>            (default:  {})  Specify the maximum 'files + dirs' to traverse before returning
                                             results from each thread
 
