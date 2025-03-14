@@ -268,7 +268,7 @@ Optional Arguments:
                                             FORMAT : [F|D][R|S|_][R|H]
                                             EXAMPLE: D_R -> dir regular, FSH -> file symlink hidden   
 
-                                            NOTE: Labelling reduces performance and increases memory usage, 
+                                            NOTE: Labelling can reduce performance and increases memory usage, 
                                             'filtering' results can improve this
     
     -t   <num>            (default:    {})  Specify the number of threads, MUST BE >= 2
