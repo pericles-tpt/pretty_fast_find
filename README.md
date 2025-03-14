@@ -8,6 +8,3 @@ This was originally a command in my [seye_rs](https://github.com/pericles-tpt/se
 
 ## Benchmarks
 See `BENCHMARKS.md`
-
-## Planned Features
-- Add an option to specify a memory usage limit
