@@ -18,8 +18,11 @@ struct Config {
     show_files: bool,
     show_dirs: bool,
     show_symlinks: bool,
+    filter_symlinks: bool,
     show_hidden: bool,
-    sorted: bool,
+    filter_hidden: bool,
+    is_filtered: bool,
+    is_sorted: bool,
     sort_asc: bool,
     label_pos: i8, // -1 -> start, 0 -> none, 1 -> end
     equality_match: bool,
@@ -28,17 +31,20 @@ struct Config {
 
 fn main() {
     let mut cfg = Config {
-        num_threads:        DEFAULT_NUM_THREADS,
-        file_dir_limit:     DEFAULT_FD_LIMIT,
-        show_files:         true,
-        show_dirs:          true,
-        show_symlinks:      true,
-        show_hidden:        true,
-        sorted:             false,
-        sort_asc:           true,
-        label_pos:          0,
-        equality_match:     false,
-        contents_search:    false,
+        num_threads:          DEFAULT_NUM_THREADS,
+        file_dir_limit:       DEFAULT_FD_LIMIT,
+        show_files:           true,
+        show_dirs:            true,
+        show_symlinks:        true,
+        filter_symlinks:      false,
+        show_hidden:          true,
+        filter_hidden:        false,
+        is_filtered:          false,
+        is_sorted:            false,
+        sort_asc:             true,
+        label_pos:            0,
+        equality_match:       false,
+        contents_search:      false,
     };
 
     let (target, root);
@@ -148,12 +154,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
             }
             "--filter" => {
                 let valid_filter_options = ["f", "d", "s", "h", "nf", "nd", "ns", "nh"];
-                
-                // Hide everything, only show types from filter
-                config.show_dirs     = false;
-                config.show_files    = false;
-                config.show_symlinks = false;
-                config.show_hidden   = false;
+                config.is_filtered = true;
 
                 // Duplicate counter
                 let mut fc = 0;
@@ -171,18 +172,22 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
                     match next {
                         "f" => {
                             config.show_files = is_show;
+                            config.show_dirs = !is_show;
                             fc += 1;
                         }
                         "d" => {
                             config.show_dirs = is_show;
+                            config.show_files = !is_show;
                             dc += 1;
                         }
                         "s" => {
                             config.show_symlinks = is_show;
+                            config.filter_symlinks = true;
                             sc += 1;
                         }
                         "h" => {
                             config.show_hidden = is_show;
+                            config.filter_hidden = true;
                             hc += 1;
                         }
                         _ => {
@@ -204,9 +209,6 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
                     return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid filter parameter, you cannot provide two or more of the same filter option"));
                 } else if fc > 0 && dc > 0 {
                     return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid filter parameter, only one of 'd' and 'f' can be provided at a time"));
-                } else if fc == 0 && dc == 0 {
-                    config.show_files = true;
-                    config.show_dirs = true;
                 }
             }
             "--sort" => {
@@ -216,7 +218,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
                 } else if next != "asc" {
                     i -= 1;
                 }
-                config.sorted = true;
+                config.is_sorted = true;
                 config.sort_asc = is_asc;
             }
             "--label" => {

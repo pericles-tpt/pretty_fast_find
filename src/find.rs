@@ -32,17 +32,16 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     }
     
     // Filter applied if provided arguments to hide: files, directories, symlinks or hidden items
-    // TODO: "show ONLY hidden" and "show ONLY symlink" conditions are currently broken
     let mut maybe_filter: Option<(fn(a: &FoundFile, cfg: &Config) -> bool, Config)> = None;
-    if !cfg.show_files || !cfg.show_dirs || !cfg.show_symlinks || !cfg.show_hidden {
+    if cfg.is_filtered {
         maybe_filter = Some((|a: &FoundFile, cfg: &Config| {
-            return  (cfg.show_files || !a.is_file) &&
-                    (cfg.show_dirs || a.is_file) &&
-                    (cfg.show_symlinks || !a.is_symlink) &&
-                    (cfg.show_hidden || !a.is_hidden);
-        }, cfg.clone()))
+            return (cfg.show_files || !a.is_file) &&
+                   (cfg.show_dirs || a.is_file) &&
+                   ((cfg.filter_symlinks && cfg.show_symlinks == a.is_symlink) || !cfg.filter_symlinks) &&
+                   ((cfg.filter_hidden   && cfg.show_hidden   == a.is_hidden ) || !cfg.filter_hidden)
+        }, cfg.clone()));
     }
-    
+
     // Set variables for regex OR exact match based on config
     let mut regex_target = Regex::new("").unwrap();
     let mut exact_match_target = Some(&target);
@@ -61,7 +60,13 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     let Ok((mut paths_to_distribute, mut all_results)) = maybe_initial_paths else {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read root path: {:?}", maybe_initial_paths.err())))
     };
-    if !cfg.sorted {
+    if maybe_filter.is_some() {
+        let (filter_fn, cfg): (fn(a: &FoundFile, cfg: &Config) -> bool, Config)  = maybe_filter.clone().unwrap();
+        all_results = all_results.into_iter().filter(|it| {
+            return filter_fn(it, &cfg)
+        }).collect();
+    }
+    if !cfg.is_sorted {
         print_walk_results(&all_results, cfg.contents_search);
     }
 
@@ -90,7 +95,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
             }
 
             // Not sorted -> Can handle printing in threads and "drop" results
-            if !cfg.sorted {
+            if !cfg.is_sorted {
                 print_walk_results(&thread_results, cfg.contents_search);
                 return (maybe_send_to_main, Vec::new());
             }
@@ -107,7 +112,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     }
     
     // Not sorted -> Threads handle printing so nothing to return
-    if !cfg.sorted {
+    if !cfg.is_sorted {
         return Ok(Vec::new())
     }
 
