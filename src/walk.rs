@@ -1,5 +1,6 @@
 use regex::bytes::Regex;
 use std::ffi::OsStr;
+use std::fs;
 use std::io::BufRead;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
@@ -43,10 +44,21 @@ fn walk_match_until_limit_contents(initial_dirs: &mut Vec<std::path::PathBuf>, l
             let Ok(ft) = val.file_type() else { continue };
             f_idx += 1;
             
-            // TODO: Follow symlinks
-            if ft.is_file() { // || ft.is_symlink()
-                let file_name = val.file_name();
-                let file= std::fs::File::open(&val.path());
+            if ft.is_file() || ft.is_symlink() {
+                let mut file_path = val.path();
+                let mut file_name = val.file_name();
+                if ft.is_symlink() {
+                    let maybe_path = fs::canonicalize(file_path.clone());
+                    if maybe_path.is_err() {
+                        // TODO: Capture error?
+                        continue;
+                    }
+
+                    file_path = maybe_path.unwrap();
+                    file_name = file_path.file_name().unwrap().to_os_string();
+                }
+                
+                let file= std::fs::File::open(&file_path);
                 if file.is_err() {
                     // TODO: Capture error?
                     continue;
@@ -68,7 +80,7 @@ fn walk_match_until_limit_contents(initial_dirs: &mut Vec<std::path::PathBuf>, l
                     }
                 }
 
-                let file_path_string = val.path().into_os_string().into_string().unwrap();
+                let file_path_string = file_path.into_os_string().into_string().unwrap();
                 if line_matches.len() > 0 {
                     let ent = FoundFile {
                         s_path: file_path_string,
