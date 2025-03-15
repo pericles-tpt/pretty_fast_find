@@ -23,6 +23,7 @@ struct Config {
     sort_asc: bool,
     label_pos: i8, // -1 -> start, 0 -> none, 1 -> end
     equality_match: bool,
+    contents_search: bool, // EXPERIMENTAL: Search file contents instead of file names
 }
 
 fn main() {
@@ -37,6 +38,7 @@ fn main() {
         sort_asc:           true,
         label_pos:          0,
         equality_match:     false,
+        contents_search:    false,
     };
 
     let (target, root);
@@ -108,7 +110,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Optional Args
     let mut i = 0;
     let first_non_optional_arg_idx = args.len() - 2;
-    let valid_command_options = vec!["--help", "--version", "-eq", "--filter", "--sort", "--label", "-t", "-fdl"];
+    let valid_command_options = vec!["--help", "--version", "-eq", "--contents", "--filter", "--sort", "--label", "-t", "-fdl"];
     while i < first_non_optional_arg_idx {
         let curr = args[i].as_str();
         if !valid_command_options.contains(&curr) {
@@ -120,6 +122,9 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
         match curr {
             "-eq" => {
                 config.equality_match = true;
+            }
+            "--contents" => {
+                config.contents_search = true;
             }
             _ => { is_valid_opt = false; }
         }
@@ -270,6 +275,8 @@ Optional Arguments:
 
                                             NOTE: Labelling can reduce performance and increases memory usage, 
                                             'filtering' results can improve this
+
+    --contents                              [EXPERIMENTAL] match on file lines instead of file names.
     
     -t   <num>            (default:    {})  Specify the number of threads, MUST BE >= 2
     -fdl <num>            (default:  {})  Specify the maximum 'files + dirs' to traverse before returning

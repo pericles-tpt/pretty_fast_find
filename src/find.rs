@@ -3,7 +3,6 @@ use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSliceMut;
 use regex::bytes::Regex;
 use std::cmp::Ordering;
-use std::ffi::OsStr;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
@@ -16,6 +15,7 @@ pub struct FoundFile {
     pub is_file: bool,
     pub is_symlink: bool,
     pub is_hidden: bool,
+    pub maybe_lines: Option<Vec<String>>,
 }
 
 const FIRST_WALK_LIMIT: usize = 256;
@@ -45,7 +45,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     
     // Set variables for regex OR exact match based on config
     let mut regex_target = Regex::new("").unwrap();
-    let mut exact_match_target = Some(OsStr::new(&target));
+    let mut exact_match_target = Some(&target);
     if !cfg.equality_match {
         let maybe_match = Regex::new(&target);
         if maybe_match.is_err() {
@@ -57,12 +57,12 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     
     // Find multiple directory paths from `root`, to distribute them between threads later
     let mut initial_dirs = vec![root];
-    let maybe_initial_paths = walk_match_until_limit(&mut initial_dirs, FIRST_WALK_LIMIT, cfg.label_pos, regex_target.clone(), exact_match_target);
+    let maybe_initial_paths = walk_match_until_limit(&mut initial_dirs, FIRST_WALK_LIMIT, cfg.label_pos, cfg.contents_search, regex_target.clone(), exact_match_target);
     let Ok((mut paths_to_distribute, mut all_results)) = maybe_initial_paths else {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read root path: {:?}", maybe_initial_paths.err())))
     };
     if !cfg.sorted {
-        print_walk_results(&all_results);
+        print_walk_results(&all_results, cfg.contents_search);
     }
 
     // Main thread loop
@@ -76,7 +76,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
 
         // Start "walk" on auxiliary threads
         let new_dirs_and_results: (Vec<Vec<PathBuf>>, Vec<Vec<FoundFile>>) = paths_per_thread.par_iter_mut().map(|p| {
-            let Ok((maybe_send_to_main, mut thread_results)) = walk_match_until_limit(p, cfg.file_dir_limit, cfg.label_pos, regex_target.clone(), exact_match_target) 
+            let Ok((maybe_send_to_main, mut thread_results)) = walk_match_until_limit(p, cfg.file_dir_limit, cfg.label_pos, cfg.contents_search, regex_target.clone(), exact_match_target) 
             else {
                 return (vec![], vec![]);
             };
@@ -91,7 +91,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
 
             // Not sorted -> Can handle printing in threads and "drop" results
             if !cfg.sorted {
-                print_walk_results(&thread_results);
+                print_walk_results(&thread_results, cfg.contents_search);
                 return (maybe_send_to_main, Vec::new());
             }
             
@@ -122,14 +122,28 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     return Ok(result_strings);
 }
 
-fn print_walk_results(results: &Vec<FoundFile>) {
+fn print_walk_results(results: &Vec<FoundFile>, print_file_lines: bool) {
     if results.len() == 0 {
         return;
     }
 
     let mut lines: Vec<String> = Vec::with_capacity(results.len());
-    for r in results.clone() {
-        lines.push(r.s_path);
+    if print_file_lines {
+        for ff in results {
+            if ff.maybe_lines.is_none() {
+                continue;
+            }
+            
+            let ffc = ff.clone();
+            lines.push(ffc.s_path);
+            lines.push(ffc.maybe_lines.unwrap().join("\n"));
+            let last_line_idx = lines.len() - 1;
+            lines[last_line_idx].push('\n');
+        }
+    } else {
+        for ff in results {
+            lines.push(ff.s_path.clone());
+        }
     }
     let output_str = format!("{}\n", lines.join("\n"));
     let _ = std::io::stdout().write(output_str.as_bytes());
