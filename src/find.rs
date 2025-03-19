@@ -2,7 +2,6 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSliceMut;
 use regex::bytes::Regex;
-use std::cmp::Ordering;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
@@ -19,12 +18,7 @@ pub struct FoundFile {
 }
 
 const FIRST_WALK_LIMIT: usize = 256;
-const SORT_ASC: fn(a: &FoundFile, b: &FoundFile) -> Ordering = |a: &FoundFile, b: &FoundFile| {
-    return a.s_path.cmp(&b.s_path);
-};
-const SORT_DESC: fn(a: &FoundFile, b: &FoundFile) -> Ordering = |a: &FoundFile, b: &FoundFile| {
-    return a.s_path.cmp(&b.s_path).reverse();
-};
+const LABEL_LENGTH: usize = 3;
 
 pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Vec<String>, Error> {
     if cfg.num_threads < 2 {
@@ -116,10 +110,24 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         return Ok(Vec::new())
     }
 
+    // Custom start/end offsets are used when comparing `s_path`s, to ensure labels AREN'T included
+    let mut start_cmp_str_offset = 0;
+    let mut end_cmp_str_offset = 0;
+    if cfg.label_pos != 0 {
+        start_cmp_str_offset = LABEL_LENGTH + 1;
+        if cfg.label_pos > 0 {
+            start_cmp_str_offset = 0;
+            end_cmp_str_offset = LABEL_LENGTH + 1;
+        }
+    }
     if cfg.sort_asc {
-        all_results.par_sort_by(SORT_ASC);
+        all_results.par_sort_by(|a: &FoundFile, b: &FoundFile| {
+            return a.s_path[start_cmp_str_offset..a.s_path.len() - end_cmp_str_offset].cmp(&b.s_path[start_cmp_str_offset..b.s_path.len() - end_cmp_str_offset]);
+        });
     } else {
-        all_results.par_sort_by(SORT_DESC);
+        all_results.par_sort_by(|a: &FoundFile, b: &FoundFile| {
+            return a.s_path[start_cmp_str_offset..a.s_path.len() - end_cmp_str_offset].cmp(&b.s_path[start_cmp_str_offset..b.s_path.len() - end_cmp_str_offset]).reverse();
+        });
     }
     let result_strings = all_results.into_iter().map(|s|{
         return s.s_path
