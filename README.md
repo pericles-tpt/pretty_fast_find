@@ -28,6 +28,6 @@ FRH /run/media/pt/gen4_test/llvm-project-llvmorg-20.1.0/lldb/examples/test/.lldb
 ```
 NOTE: The output above is only a sample of the complete command output. Skipped section(s) are denoted with `...`
 
-For more information about the available arguments use the `--help` flag.
+For more information use the `--help` flag.
 ## Benchmarks
 See `BENCHMARKS.md`

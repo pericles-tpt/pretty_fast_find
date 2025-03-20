@@ -31,7 +31,6 @@ fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>,
     }
     matches = Vec::with_capacity(fd_limit);
     
-    let has_label = label_pos != 0;
     let mut f_idx = 0;
     let mut d_idx = 0;
     let hidden_rx = Regex::new(&HIDDEN_RX_STR).unwrap();
@@ -45,16 +44,13 @@ fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>,
             // Add trailing '/' to dir paths to differentiate them
             let mut parent_path_string = parent_path_os_str.into_string().unwrap();
             parent_path_string.push('/');
-            let mut ent = FoundFile {
+            let ent = FoundFile {
                 s_path: parent_path_string,
                 is_file: false,
                 is_symlink: false,
                 is_hidden: parent_hidden,
                 maybe_lines: None,
             };
-            if has_label {
-                ent.s_path = add_label(&ent, label_pos);
-            }
             matches.push(ent);
         }
         
@@ -70,22 +66,26 @@ fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>,
                 if (is_match_exact && file_name.as_os_str() == match_exact_fn.unwrap()) || 
                    (!is_match_exact && match_rx.is_match(file_name.as_bytes())) {
                     let file_path_string = val.path().into_os_string().into_string().unwrap();
-                    let mut ent = FoundFile {
+                    let ent = FoundFile {
                         s_path: file_path_string,
                         is_file: true,
                         is_symlink: ft.is_symlink(),
                         is_hidden: parent_hidden || file_name.as_bytes().starts_with(&['.' as u8]),
                         maybe_lines: None
                     };
-                    if has_label {                        
-                        ent.s_path = add_label(&ent, label_pos);
-                    }
                     matches.push(ent);
                 }
                 continue;
             }
 
             dir_q.push(val.path());
+        }
+    }
+
+    let is_labelled = label_pos != 0;
+    if is_labelled {
+        for ent in &mut matches {
+            ent.s_path = add_label(&ent, label_pos);
         }
     }
 
