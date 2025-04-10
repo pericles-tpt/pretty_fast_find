@@ -4,7 +4,7 @@ Pretty Fast Find (`pff`) is an iterative, multithreaded alternative to 'find' th
 This was originally a command in my [seye_rs](https://github.com/pericles-tpt/seye_rs) project, but once I saw the focus of that project shifting to "find" functionality I decided to separate it into this repo.
 
 ## How it works
-`pff` does breadth-first, iterative traversals of a list of directories (initially a list containing just the target directory) up to a limit (specified by the `-fdl` parameter). It uses the excellent `rayon` library to multi-thread those traversals up to a thread limit (specified by the `-t` parameter). It also uses the `regex` library for parsing the user provided "pattern" as regex and matching that pattern against file names.
+`pff` does breadth-first, iterative traversals of a list of directories (initially a list containing just the target directory) up to a limit (specified by the `-fdl` parameter). It uses the `rayon` library to multi-thread those traversals up to a thread limit (specified by the `-t` parameter). It also uses the `regex` library for parsing the user provided "pattern" as regex and matching that pattern against file names.
 
 ## Example
 In this example the results have been filtered to contain just files, sorted in descending order with a property label at the start. The included labels indicate the following:
