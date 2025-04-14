@@ -11,9 +11,6 @@ use crate::walk::walk_match_until_limit;
 #[derive(Clone, Debug)]
 pub struct FoundFile {
     pub s_path: String,
-    pub is_file: bool,
-    pub is_symlink: bool,
-    pub is_hidden: bool,
     pub maybe_lines: Option<Vec<String>>,
 }
 
@@ -23,17 +20,6 @@ const LABEL_LENGTH: usize = 3;
 pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Vec<String>, Error> {
     if cfg.num_threads < 2 {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("invalid number of threads, '-t' MUST be >= 2")))
-    }
-    
-    // Filter applied if provided arguments to hide: files, directories, symlinks or hidden items
-    let mut maybe_filter: Option<(fn(a: &FoundFile, cfg: &Config) -> bool, Config)> = None;
-    if cfg.is_filtered {
-        maybe_filter = Some((|a: &FoundFile, cfg: &Config| {
-            return (cfg.show_files || !a.is_file) &&
-                   (cfg.show_dirs || a.is_file) &&
-                   ((cfg.filter_symlinks && cfg.show_symlinks == a.is_symlink) || !cfg.filter_symlinks) &&
-                   ((cfg.filter_hidden   && cfg.show_hidden   == a.is_hidden ) || !cfg.filter_hidden)
-        }, cfg.clone()));
     }
 
     // Set variables for regex OR exact match based on config
@@ -51,17 +37,19 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     // Find multiple directory paths from `root`, to distribute them between threads later
     let mut initial_dirs = vec![root];
     let maybe_initial_paths = walk_match_until_limit(&mut initial_dirs, FIRST_WALK_LIMIT, cfg.label_pos, cfg.contents_search, regex_target.clone(), exact_match_target);
-    let Ok((mut paths_to_distribute, mut all_results)) = maybe_initial_paths else {
+    let mut flat_results: Vec<FoundFile> = Vec::new();
+    let Ok((mut paths_to_distribute, mut categorised_results)) = maybe_initial_paths else {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read root path: {:?}", maybe_initial_paths.err())))
     };
-    if maybe_filter.is_some() {
-        let (filter_fn, cfg): (fn(a: &FoundFile, cfg: &Config) -> bool, Config)  = maybe_filter.clone().unwrap();
-        all_results = all_results.into_iter().filter(|it| {
-            return filter_fn(it, &cfg)
-        }).collect();
+    
+    let (filtered_hidden_idxs, filtered_types_idxs) = get_filtered_indices(cfg);
+    for i in &filtered_hidden_idxs {
+        for j in &filtered_types_idxs {
+            flat_results.append(&mut categorised_results[*i][*j]);
+        }
     }
     if !cfg.is_sorted {
-        print_walk_results(&all_results, cfg.contents_search);
+        print_walk_results(&flat_results, cfg.contents_search);
     }
 
     // Main thread loop
@@ -75,31 +63,31 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
 
         // Start "walk" on auxiliary threads
         let new_dirs_and_results: (Vec<Vec<PathBuf>>, Vec<Vec<FoundFile>>) = paths_per_thread.par_iter_mut().map(|p| {
-            let Ok((maybe_send_to_main, mut thread_results)) = walk_match_until_limit(p, cfg.file_dir_limit, cfg.label_pos, cfg.contents_search, regex_target.clone(), exact_match_target) 
+            let Ok((maybe_send_to_main, mut thread_categorised_results)) = walk_match_until_limit(p, cfg.file_dir_limit, cfg.label_pos, cfg.contents_search, regex_target.clone(), exact_match_target) 
             else {
                 return (vec![], vec![]);
             };
             
             // All filtering is handled in auxiliary threads
-            if maybe_filter.is_some() {
-                let (filter_fn, cfg): (fn(a: &FoundFile, cfg: &Config) -> bool, Config)  = maybe_filter.clone().unwrap();
-                thread_results = thread_results.into_iter().filter(|it| {
-                    return filter_fn(it, &cfg)
-                }).collect();
+            let mut thread_flat_results: Vec<FoundFile> = Vec::new();
+            for i in &filtered_hidden_idxs {
+                for j in &filtered_types_idxs {
+                    thread_flat_results.append(&mut thread_categorised_results[*i][*j]);
+                }
             }
 
             // Not sorted -> Can handle printing in threads and "drop" results
             if !cfg.is_sorted {
-                print_walk_results(&thread_results, cfg.contents_search);
+                print_walk_results(&thread_flat_results, cfg.contents_search);
                 return (maybe_send_to_main, Vec::new());
             }
             
-            return (maybe_send_to_main, thread_results)
+            return (maybe_send_to_main, thread_flat_results)
         }).unzip();
 
         // Retrieve paths to distribute and add to all_results    
         paths_to_distribute = new_dirs_and_results.0.into_iter().flatten().collect();
-        all_results.append(&mut new_dirs_and_results.1.into_iter().flatten().collect());
+        flat_results.append(&mut new_dirs_and_results.1.into_iter().flatten().collect());
         if paths_to_distribute.len() == 0 {
             break;
         }
@@ -121,15 +109,15 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         }
     }
     if cfg.sort_asc {
-        all_results.par_sort_by(|a: &FoundFile, b: &FoundFile| {
+        flat_results.par_sort_by(|a: &FoundFile, b: &FoundFile| {
             return a.s_path[start_cmp_str_offset..a.s_path.len() - end_cmp_str_offset].cmp(&b.s_path[start_cmp_str_offset..b.s_path.len() - end_cmp_str_offset]);
         });
     } else {
-        all_results.par_sort_by(|a: &FoundFile, b: &FoundFile| {
+        flat_results.par_sort_by(|a: &FoundFile, b: &FoundFile| {
             return a.s_path[start_cmp_str_offset..a.s_path.len() - end_cmp_str_offset].cmp(&b.s_path[start_cmp_str_offset..b.s_path.len() - end_cmp_str_offset]).reverse();
         });
     }
-    let result_strings = all_results.into_iter().map(|s|{
+    let result_strings = flat_results.into_iter().map(|s|{
         return s.s_path
     }).collect();
     return Ok(result_strings);
@@ -181,4 +169,37 @@ fn distribute_paths_per_thread(paths_to_distribute_and_free: &mut Vec<PathBuf>, 
     paths_to_distribute_and_free.shrink_to_fit();
 
     return paths_per_thread;
+}
+
+// get_filtered_indices, determines which indices in the Vec<Vec<Vec<FoundFile>>> to retrieve from the walk function
+// as the first and second dimensions of that vector encode the file's properties like this:
+//      matches[0] -> not hidden
+//      matches[1] -> hidden
+//      matches[_][0] -> files
+//      matches[_][1] -> symlinks
+//      matches[_][2] -> dirs
+fn get_filtered_indices(cfg: &Config) -> (Vec<usize>, Vec<usize>) {
+    let mut filtered_hidden = vec![0, 1];
+    let mut filtered_types = vec![0, 1, 2];
+    if cfg.is_filtered {
+        if cfg.filter_hidden {
+            filtered_hidden = vec![cfg.show_hidden as usize];
+        }
+
+        filtered_types = Vec::with_capacity(3);
+        if cfg.show_files {
+            filtered_types.append(&mut vec![0]);
+            if cfg.filter_symlinks {
+                if cfg.show_symlinks {
+                    filtered_types[0] = 1;
+                }
+            } else {
+                filtered_types.append(&mut vec![1]);
+            }
+        }
+        if cfg.show_dirs && (!cfg.filter_symlinks || !cfg.show_symlinks) {
+            filtered_types.append(&mut vec![2]);
+        }
+    }
+    return (filtered_hidden, filtered_types);
 }

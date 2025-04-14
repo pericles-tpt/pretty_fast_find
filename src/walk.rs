@@ -9,16 +9,15 @@ use crate::find::FoundFile;
 
 const HIDDEN_RX_STR: &str = r".*\/\..*";
 
-pub fn walk_match_until_limit(initial_dirs: &mut Vec<std::path::PathBuf>, limit: usize, label_pos: i8, contents_search: bool, match_rx: Regex, match_exact: Option<&String>) -> std::io::Result<(Vec<PathBuf>, Vec<FoundFile>)> {
+pub fn walk_match_until_limit(initial_dirs: &mut Vec<std::path::PathBuf>, limit: usize, label_pos: i8, contents_search: bool, match_rx: Regex, match_exact: Option<&String>) -> std::io::Result<(Vec<PathBuf>, Vec<Vec<Vec<FoundFile>>>)> {
     if !contents_search {
         return walk_match_until_limit_file_names(initial_dirs, limit, label_pos, match_rx, match_exact);
     }
     return walk_match_until_limit_contents(initial_dirs, limit, match_rx, match_exact)
 }
 
-fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>, limit: usize, label_pos: i8, match_rx: Regex, match_exact: Option<&String>) -> std::io::Result<(Vec<PathBuf>, Vec<FoundFile>)> {
+fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>, limit: usize, label_pos: i8, match_rx: Regex, match_exact: Option<&String>) -> std::io::Result<(Vec<PathBuf>, Vec<Vec<Vec<FoundFile>>>)> {
     let mut dir_q: Vec<PathBuf> = std::mem::take(initial_dirs);
-    let mut matches: Vec<FoundFile>;
     let mut match_exact_fn = Some(OsStr::new(""));
     if match_exact.is_some() {
         match_exact_fn = Some(OsStr::new(match_exact.unwrap()));
@@ -29,7 +28,7 @@ fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>,
     if limit < dir_q.len() {
         fd_limit = dir_q.len();
     }
-    matches = Vec::with_capacity(fd_limit);
+    let mut matches: Vec<Vec<Vec<FoundFile>>> = initialise_matches_capacities(fd_limit);
     
     let mut f_idx = 0;
     let mut d_idx = 0;
@@ -46,12 +45,9 @@ fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>,
             parent_path_string.push('/');
             let ent = FoundFile {
                 s_path: parent_path_string,
-                is_file: false,
-                is_symlink: false,
-                is_hidden: parent_hidden,
                 maybe_lines: None,
             };
-            matches.push(ent);
+            insert_entry_in_matches(&mut matches, ent, parent_hidden, false, false);
         }
         
         let dir_entries = std::fs::read_dir(&dir_q[d_idx])?;
@@ -68,12 +64,9 @@ fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>,
                     let file_path_string = val.path().into_os_string().into_string().unwrap();
                     let ent = FoundFile {
                         s_path: file_path_string,
-                        is_file: true,
-                        is_symlink: ft.is_symlink(),
-                        is_hidden: parent_hidden || file_name.as_bytes().starts_with(&['.' as u8]),
                         maybe_lines: None
                     };
-                    matches.push(ent);
+                    insert_entry_in_matches(&mut matches, ent, parent_hidden || file_name.as_bytes().starts_with(&['.' as u8]), true, ft.is_symlink());
                 }
                 continue;
             }
@@ -84,46 +77,50 @@ fn walk_match_until_limit_file_names(initial_dirs: &mut Vec<std::path::PathBuf>,
 
     let is_labelled = label_pos != 0;
     if is_labelled {
-        for ent in &mut matches {
-            ent.s_path = add_label(&ent, label_pos);
+        for i in 0..2 {
+            let is_hidden = i == 1;
+            for j in 0..3 {
+                for ent in &mut matches[i][j] {
+                    ent.s_path = add_label(&ent.s_path, label_pos, is_hidden, j == 0, j == 1);
+                }
+            }
         }
     }
 
     return Ok((dir_q.drain(d_idx..).collect(), matches));
 }
 
-fn add_label(ff: &FoundFile, label_pos: i8) -> String {
-    let label = generate_label(ff);
+fn add_label(s_path: &String, label_pos: i8, is_hidden: bool, is_file: bool, is_symlink: bool) -> String {
+    let label = generate_label(is_hidden, is_file, is_symlink);
     if label_pos == 1 {
-        return format!("{} {}", ff.s_path, label);
+        return format!("{} {}", s_path, label);
     }
-    return format!("{} {}", label, ff.s_path);
+    return format!("{} {}", label, s_path);
 }
 
-fn generate_label(f: &FoundFile) -> String {
+fn generate_label(is_hidden: bool, is_file: bool, is_symlink: bool) -> String {
     let mut ret = String::from("FRR");
-    if !f.is_file {
+    if !is_file {
         ret.replace_range( 0..2, "D_");
     }
-    if f.is_symlink {
+    if is_symlink {
         ret.replace_range( 1..2, "S");
     }
-    if f.is_hidden {
+    if is_hidden {
         ret.replace_range( 2..3, "H");
     }
     return ret;
 }
 
-fn walk_match_until_limit_contents(initial_dirs: &mut Vec<std::path::PathBuf>, limit: usize, match_rx: Regex, match_exact: Option<&String>) -> std::io::Result<(Vec<PathBuf>, Vec<FoundFile>)> {
+fn walk_match_until_limit_contents(initial_dirs: &mut Vec<std::path::PathBuf>, limit: usize, match_rx: Regex, match_exact: Option<&String>) -> std::io::Result<(Vec<PathBuf>, Vec<Vec<Vec<FoundFile>>>)> {
     let mut dir_q: Vec<PathBuf> = std::mem::take(initial_dirs);
-    let mut matches: Vec<FoundFile>;
     
     // Actual limit should be min(limit, some.len())
     let mut fd_limit = limit;
     if limit < dir_q.len() {
         fd_limit = dir_q.len();
     }
-    matches = Vec::with_capacity(fd_limit);
+    let mut matches: Vec<Vec<Vec<FoundFile>>> = initialise_matches_capacities(fd_limit);
     
     let mut f_idx = 0;
     let mut d_idx = 0;
@@ -180,12 +177,9 @@ fn walk_match_until_limit_contents(initial_dirs: &mut Vec<std::path::PathBuf>, l
                 if line_matches.len() > 0 {
                     let ent = FoundFile {
                         s_path: file_path_string,
-                        is_file: true,
-                        is_symlink: ft.is_symlink(),
-                        is_hidden: parent_hidden || file_name.as_bytes().starts_with(&['.' as u8]),
                         maybe_lines: Some(line_matches)
                     };
-                    matches.push(ent);
+                    insert_entry_in_matches(&mut matches, ent, parent_hidden || file_name.as_bytes().starts_with(&['.' as u8]), true, ft.is_symlink());
                 }
 
                 continue;
@@ -196,4 +190,33 @@ fn walk_match_until_limit_contents(initial_dirs: &mut Vec<std::path::PathBuf>, l
     }
 
     return Ok((dir_q.drain(d_idx..).collect(), matches));
+}
+
+fn insert_entry_in_matches(matches: &mut Vec<Vec<Vec<FoundFile>>>, ent: FoundFile, hidden: bool, file: bool, symlink: bool) {
+    let is_hidden_idx = hidden as usize;
+    let entry_type_idx = (symlink as usize) + ((!file as usize) * 2);
+    matches[is_hidden_idx][entry_type_idx].push(ent);
+}
+
+// initialise_matches_capacities, sets the capacities of all 3 "levels" of the vector based on a guess of the occurences of:
+// not hidden [0][_], hidden [1][_], files [_][0], symlinks [_][1] and directories [_][2]
+fn initialise_matches_capacities(fd_limit: usize) -> Vec<Vec<Vec<FoundFile>>> {
+    let mut matches = vec![Vec::with_capacity(3), Vec::with_capacity(3)];
+    let mut left = fd_limit;
+    // TODO: These multipliers are based on the sample folder used for BENCHMARKS 
+    //       Could probably determine a better estimate for these...
+    let type_mults = vec![92.5/100.0, 1.0/100.0, 6.5/100.0];
+    let hidden_mults = vec![99.9/100.0, 0.1/100.0];
+    for i in 0..3 {
+        let n_hidden_cap = ((fd_limit as f64) * type_mults[i] * hidden_mults[0]).floor() as usize;
+        let hidden_cap = ((fd_limit as f64) * type_mults[i] * hidden_mults[1]).floor() as usize;
+        matches[0].push(Vec::with_capacity(n_hidden_cap));
+        matches[1].push(Vec::with_capacity(hidden_cap));
+        left -= hidden_cap + n_hidden_cap;
+
+        if i == 2 {
+            matches[0][i] = Vec::with_capacity(matches[1][i].capacity() + left);
+        }
+    }
+    return matches;
 }
