@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 mod find;
 mod walk;
+mod matches;
+mod label;
 
 use find::find;
 
@@ -26,7 +28,6 @@ struct Config {
     sort_asc: bool,
     label_pos: i8, // -1 -> start, 0 -> none, 1 -> end
     equality_match: bool,
-    contents_search: bool, // EXPERIMENTAL: Search file contents instead of file names
 }
 
 fn main() {
@@ -44,7 +45,6 @@ fn main() {
         sort_asc:             true,
         label_pos:            0,
         equality_match:       false,
-        contents_search:      false,
     };
 
     let (target, root);
@@ -128,9 +128,6 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
         match curr {
             "-eq" => {
                 config.equality_match = true;
-            }
-            "--contents" => {
-                config.contents_search = true;
             }
             _ => { is_valid_opt = false; }
         }
@@ -277,8 +274,6 @@ Optional Arguments:
 
                                             NOTE: Labelling can reduce performance and increases memory usage, 
                                             'filtering' results can improve this
-
-    --contents                              [EXPERIMENTAL] match on file lines instead of file names.
     
     -t   <num>            (default:    {})  Specify the number of threads, MUST BE >= 2
     -fdl <num>            (default:  {})  Specify the maximum 'files + dirs' to traverse before returning
