@@ -5,11 +5,11 @@ use regex::bytes::Regex;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
-use crate::matches::NUM_FILE_CATEGORIES;
-use crate::walk::walk_match_until_limit_file_names;
+use crate::matches;
+use crate::walk;
 use crate::Config;
 
-const FIRST_WALK_LIMIT: usize = 256;
+const FIRST_WALK_FDL: usize = 256;
 const LABEL_LENGTH: usize = 3;
 
 const FT_FILE: usize = 0;
@@ -25,17 +25,17 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     let mut regex_target = Regex::new("").unwrap();
     let mut exact_match_target = Some(&target);
     if !cfg.equality_match {
-        let maybe_match = Regex::new(&target);
-        if maybe_match.is_err() {
+        let regex_result = Regex::new(&target);
+        if regex_result.is_err() {
             return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to compile regex")));
         }
-        regex_target = maybe_match.unwrap();
+        regex_target = regex_result.unwrap();
         exact_match_target = None;
     }
     
     // Find multiple directory paths from `root`, to distribute them between threads later
     let mut initial_dirs = vec![root];
-    let maybe_initial_paths = walk_match_until_limit_file_names(&mut initial_dirs, FIRST_WALK_LIMIT, cfg.label_pos, regex_target.clone(), exact_match_target);
+    let maybe_initial_paths = walk::walk_collect_matches_until_limit(&mut initial_dirs, FIRST_WALK_FDL, cfg.label_pos, regex_target.clone(), exact_match_target);
     let Ok((mut paths_to_distribute, mut categorised_results)) = maybe_initial_paths else {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read root path: {:?}", maybe_initial_paths.err())))
     };
@@ -56,8 +56,8 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         let mut paths_per_thread = distribute_paths_per_thread(&mut paths_to_distribute, curr_num_threads);
 
         // Start "walk" on auxiliary threads
-        let new_dirs_and_results: (Vec<Vec<PathBuf>>, Vec<Vec<String>>) = paths_per_thread.par_iter_mut().map(|p| {
-            let Ok((thread_paths_to_distribute, mut thread_categorised_results)) = walk_match_until_limit_file_names(p, cfg.file_dir_limit, cfg.label_pos, regex_target.clone(), exact_match_target) 
+        let new_dirs_and_results: (Vec<Vec<PathBuf>>, Vec<Vec<String>>) = paths_per_thread.par_iter_mut().map(|paths| {
+            let Ok((thread_paths_to_distribute, mut thread_categorised_results)) = walk::walk_collect_matches_until_limit(paths, cfg.file_dir_limit, cfg.label_pos, regex_target.clone(), exact_match_target) 
             else {
                 return (vec![], vec![]);
             };
@@ -65,7 +65,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
             // All filtering is handled in auxiliary threads
             let thread_flat_results = filter_elements(cfg, &mut thread_categorised_results).into_iter().flatten().collect();
 
-            // Not sorted -> Can handle printing in threads and "drop" results
+            // Not sorted -> Can print immediately and "drop" results here
             if !cfg.is_sorted {
                 print_walk_results(&thread_flat_results);
                 return (thread_paths_to_distribute, Vec::new());
@@ -77,7 +77,8 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         // Retrieve paths to distribute and add to all_results    
         paths_to_distribute = new_dirs_and_results.0.into_iter().flatten().collect();
         flat_results.append(&mut new_dirs_and_results.1.into_iter().flatten().collect());
-        if paths_to_distribute.len() == 0 {
+        let finished_walk = paths_to_distribute.len() == 0;
+        if finished_walk {
             break;
         }
     }
@@ -87,7 +88,7 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
         return Ok(Vec::new())
     }
 
-    // Custom start/end offsets are used when comparing `s_path`s, to ensure labels AREN'T included
+    // Custom start/end offsets are used when comparing paths, to ensure labels AREN'T included
     let mut start_cmp_str_offset = 0;
     let mut end_cmp_str_offset = 0;
     if cfg.label_pos != 0 {
@@ -125,14 +126,14 @@ fn print_walk_results(results: &Vec<String>) {
 fn distribute_paths_per_thread(paths_to_distribute_and_free: &mut Vec<PathBuf>, num_threads: usize) -> Vec<Vec<PathBuf>> {
     // distribute paths such that each thread gets a "fair" allocation of low and high index elements
     let max_num_paths_per_thread = (paths_to_distribute_and_free.len() / num_threads) + 1;
-    let mut paths_per_thread: Vec<Vec<PathBuf>> = vec![Vec::with_capacity(max_num_paths_per_thread); num_threads];
+    let mut per_thread_paths: Vec<Vec<PathBuf>> = vec![Vec::with_capacity(max_num_paths_per_thread); num_threads];
     for i in 0..num_threads {
         for j in 0..max_num_paths_per_thread {
             let take_idx = (j * num_threads) + i;
             if take_idx >= paths_to_distribute_and_free.len() {
                 break;
             }
-            paths_per_thread[i].push(paths_to_distribute_and_free[take_idx].clone());
+            per_thread_paths[i].push(paths_to_distribute_and_free[take_idx].clone());
         }
     }
     
@@ -140,11 +141,11 @@ fn distribute_paths_per_thread(paths_to_distribute_and_free: &mut Vec<PathBuf>, 
     paths_to_distribute_and_free.clear();
     paths_to_distribute_and_free.shrink_to_fit();
 
-    return paths_per_thread;
+    return per_thread_paths;
 }
 
 // filter_elements, determines which indices in the Vec<Vec<FoundFile>> to retrieve based on filters in config
-fn filter_elements(cfg: &Config, original: &mut [Vec<String>; NUM_FILE_CATEGORIES]) -> Vec<Vec<String>> {
+fn filter_elements(cfg: &Config, original: &mut [Vec<String>; matches::NUM_FILE_CATEGORIES]) -> Vec<Vec<String>> {
     let mut filtered_hidden = vec![0, 1];
     let mut filtered_types = vec![FT_FILE, FT_SYMLINK, FT_DIR];
     if cfg.is_filtered {
@@ -171,8 +172,8 @@ fn filter_elements(cfg: &Config, original: &mut [Vec<String>; NUM_FILE_CATEGORIE
     let mut ret = Vec::with_capacity(filtered_hidden.len() * filtered_types.len());
     for is_hidden in filtered_hidden {
         for ft in &filtered_types {
-            let original_idx = (is_hidden as usize * 3) + *ft;
-            ret.push(std::mem::take(&mut original[original_idx]));
+            let filtered_idx = (is_hidden as usize * 3) + *ft;
+            ret.push(std::mem::take(&mut original[filtered_idx]));
         }
     }
     return ret;

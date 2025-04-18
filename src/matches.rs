@@ -1,6 +1,6 @@
 pub const NUM_FILE_CATEGORIES: usize = 6;
 
-// matches, are stored in a vector of Vec<String> where index from the root represents a file with different properties:
+// matches, are stored in a Vec<String> where indexes from the root represents entries with different properties:
 // 0 -> not hidden / file
 // 1 -> not hidden / symlink
 // 2 -> not hidden / directory
@@ -22,18 +22,17 @@ pub fn initialise_matches_capacities(fd_limit: usize) -> [Vec<String>; NUM_FILE_
         
         matches[i] = Vec::with_capacity(cap);
         left -= cap;
-
     }
-    let leftover_idx: usize = 2;
-    matches[leftover_idx] = Vec::with_capacity(matches[leftover_idx].capacity() + left);
+    let leftover_cap_idx: usize = 2;
+    matches[leftover_cap_idx] = Vec::with_capacity(matches[leftover_cap_idx].capacity() + left);
     return matches;
 }
 
 // insert_entry_in_matches, inserts an entry in `matches` at the index that corresponds to its properties according to the following formula:
 //  (is_hidden * 3) + (IS_FILE ? 0 : (IS_SYMLINK ? 1 : 2))
 pub fn insert_entry_in_matches(matches: &mut [Vec<String>; NUM_FILE_CATEGORIES], ent: String, hidden: bool, file: bool, symlink: bool) {
-    let hidden_type_multi = hidden as usize;
+    let hidden_type_offset = hidden as usize * 3;
     let entry_type_offset = (symlink as usize) + ((!file as usize) * 2);
-    let idx = (hidden_type_multi * 3) + entry_type_offset;
+    let idx = hidden_type_offset + entry_type_offset;
     matches[idx].push(ent);
 }

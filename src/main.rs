@@ -8,12 +8,9 @@ mod walk;
 mod matches;
 mod label;
 
-use find::find;
-
 const DEFAULT_NUM_THREADS: usize = 84;
 const DEFAULT_FD_LIMIT: usize = 2048;
 
-#[derive(Clone)]
 struct Config {
     num_threads: usize,
     file_dir_limit: usize,
@@ -57,12 +54,12 @@ fn main() {
             }
         }
         Err(e ) => {
-            eprintln!("{}", e);
+            eprintln!("error: {}", e);
             return;
         }
     }
 
-    match find(target, root, &cfg) {
+    match find::find(target, root, &cfg) {
         Ok(entries) => {
             if entries.len() == 0 {
                 return;
@@ -74,14 +71,14 @@ fn main() {
             }
         }
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("error: {}", e);
         }
     }
 }
 
 
 fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String, PathBuf)> {
-    // Length Checks / Help
+    // Length Checks / Help Output
     let default_ret = (String::new(), PathBuf::new());
     if args.len() == 0 {
         return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "insufficient arguments for `pff`, expected: `pff --help`, `pff --version` or `pff [PATTERN] [ROOT FIND DIRECTORY]`"));
@@ -103,11 +100,11 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
 
     // Required Args
     let target = args[args.len() - 2].to_string();
-    let maybe_root = &args[args.len() - 1];
-    if !std::fs::exists(maybe_root)? {
-        return Err(std::io::Error::new(std::io::ErrorKind::NotFound, format!("provided path '{}', does not exist", maybe_root)));
+    let root = &args[args.len() - 1];
+    if !std::fs::exists(root)? {
+        return Err(std::io::Error::new(std::io::ErrorKind::NotFound, format!("provided path '{}', does not exist", root)));
     }
-    let root_pb = PathBuf::from(maybe_root);
+    let root_pb = PathBuf::from(root);
     let has_optional_args = args.len() > 2;
     if !has_optional_args {
         return Ok((target, root_pb));
@@ -116,14 +113,14 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Optional Args
     let mut i = 0;
     let first_non_optional_arg_idx = args.len() - 2;
-    let valid_command_options = vec!["--help", "--version", "-eq", "--contents", "--filter", "--sort", "--label", "-t", "-fdl"];
+    let valid_command_options = vec!["-eq", "--filter", "--sort", "--label", "-t", "-fdl"];
     while i < first_non_optional_arg_idx {
         let curr = args[i].as_str();
         if !valid_command_options.contains(&curr) {
             return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("invalid argument '{}', must be one of: {}", curr, valid_command_options.join(", "))));
         }
     
-        // Toggle Args
+        // Toggle Args (no additional args)
         let mut is_valid_opt = true;
         match curr {
             "-eq" => {
@@ -136,7 +133,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
             continue;
         }
         
-        // Single-value Args
+        // Multi-value args
         if i + 1 >= args.len() {
             return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("missing additional argument for '{}' flag", curr)));
         }
@@ -198,7 +195,8 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
                     }
                     next = args[i].as_str();
                 }
-                if i != args.len() {
+                let stopped_before_last_optional_arg = i < args.len();
+                if stopped_before_last_optional_arg {
                     i -= 1;
                 }
                 
