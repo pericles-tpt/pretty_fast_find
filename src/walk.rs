@@ -33,9 +33,7 @@ pub fn walk_collect_matches_until_limit(initial_dirs: &mut Vec<std::path::PathBu
         let is_match: bool = (is_match_exact && dir_base_name == match_exact_basename) || 
                              (!is_match_exact && match_rx.is_match(dir_base_name.unwrap().as_bytes()));
         if is_match {
-            // Add trailing '/' to dir paths to differentiate them
-            let mut dir_path_string = dir_path.into_string().unwrap();
-            dir_path_string.push('/');
+            let dir_path_string = dir_path.into_string().unwrap();
             matches::insert_entry_in_matches(&mut matches, dir_path_string, dir_hidden, false, false);
         }
         
