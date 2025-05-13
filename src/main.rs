@@ -14,6 +14,7 @@ const DEFAULT_FD_LIMIT: usize = 2048;
 struct Config {
     num_threads: usize,
     file_dir_limit: usize,
+    include_target_in_output: bool,
     show_files: bool,
     show_dirs: bool,
     show_symlinks: bool,
@@ -29,19 +30,20 @@ struct Config {
 
 fn main() {
     let mut cfg = Config {
-        num_threads:          DEFAULT_NUM_THREADS,
-        file_dir_limit:       DEFAULT_FD_LIMIT,
-        show_files:           true,
-        show_dirs:            true,
-        show_symlinks:        true,
-        filter_symlinks:      false,
-        show_hidden:          true,
-        filter_hidden:        false,
-        is_filtered:          false,
-        is_sorted:            false,
-        sort_asc:             true,
-        label_pos:            0,
-        equality_match:       false,
+        num_threads:              DEFAULT_NUM_THREADS,
+        file_dir_limit:           DEFAULT_FD_LIMIT,
+        include_target_in_output: false,
+        show_files:               true,
+        show_dirs:                true,
+        show_symlinks:            true,
+        filter_symlinks:          false,
+        show_hidden:              true,
+        filter_hidden:            false,
+        is_filtered:              false,
+        is_sorted:                false,
+        sort_asc:                 true,
+        label_pos:                0,
+        equality_match:           false,
     };
 
     let (target, root);
@@ -113,7 +115,7 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
     // Optional Args
     let mut i = 0;
     let first_non_optional_arg_idx = args.len() - 2;
-    let valid_command_options = vec!["-eq", "--filter", "--sort", "--label", "-t", "-fdl"];
+    let valid_command_options = vec!["--include-target", "-eq", "--filter", "--sort", "--label", "-t", "-fdl"];
     while i < first_non_optional_arg_idx {
         let curr = args[i].as_str();
         if !valid_command_options.contains(&curr) {
@@ -123,6 +125,9 @@ fn eval_args(args: &Vec<String>, config: &mut Config) -> std::io::Result<(String
         // Toggle Args (no additional args)
         let mut is_valid_opt = true;
         match curr {
+            "--include-target" =>{
+                config.include_target_in_output = true;
+            }
             "-eq" => {
                 config.equality_match = true;
             }
@@ -250,6 +255,8 @@ Optional Arguments:
     --help                                  Prints help
     --version                               Prints version
 
+    --include-target                        Include the 'target' directory in the output, if matched
+                                            (not included by default)
     -eq                                     Match EXACTLY on 'pattern', faster than (default) regex check 
                                             for exact matching
 

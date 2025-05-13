@@ -34,11 +34,27 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     }
     
     // Find multiple directory paths from `root`, to distribute them between threads later
-    let mut initial_dirs = vec![root];
+    let mut initial_dirs = vec![root.clone()];
     let maybe_initial_paths = walk::walk_collect_matches_until_limit(&mut initial_dirs, FIRST_WALK_FDL, cfg.label_pos, regex_target.clone(), exact_match_target);
     let Ok((mut paths_to_distribute, mut categorised_results)) = maybe_initial_paths else {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to read root path: {:?}", maybe_initial_paths.err())))
     };
+
+    // Remove the target directory from the results of the initial, ST scan (default behaviour)
+    if !cfg.include_target_in_output {
+        let dir_category_idxs = vec![2, 5];
+        for idx in dir_category_idxs {
+            if categorised_results[idx].len() > 0 {
+                let first_entry = categorised_results[idx][0].clone();
+                let first_path = label::remove_label_from_string(first_entry, cfg.label_pos);
+                let remove_first_entry = PathBuf::from(first_path) == root;
+                if remove_first_entry {
+                    categorised_results[idx] = categorised_results[idx][1..].to_vec();
+                    break;
+                }    
+            }
+        }
+    }
 
     let mut flat_results = filter_elements(cfg,&mut categorised_results).into_iter().flatten().collect();
     
