@@ -5,12 +5,12 @@ use regex::bytes::Regex;
 use std::io::{Error, Write};
 use std::path::PathBuf;
 
+use crate::label;
 use crate::matches;
 use crate::walk;
 use crate::Config;
 
 const FIRST_WALK_FDL: usize = 256;
-const LABEL_LENGTH: usize = 3;
 
 const FT_FILE: usize = 0;
 const FT_SYMLINK: usize = 1;
@@ -92,10 +92,10 @@ pub fn find(target: String, root: std::path::PathBuf, cfg: &Config) -> Result<Ve
     let mut start_cmp_str_offset = 0;
     let mut end_cmp_str_offset = 0;
     if cfg.label_pos != 0 {
-        start_cmp_str_offset = LABEL_LENGTH + 1;
+        start_cmp_str_offset = label::LABEL_LENGTH + 1;
         if cfg.label_pos > 0 {
             start_cmp_str_offset = 0;
-            end_cmp_str_offset = LABEL_LENGTH + 1;
+            end_cmp_str_offset = label::LABEL_LENGTH + 1;
         }
     }
     if cfg.sort_asc {
