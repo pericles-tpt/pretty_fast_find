@@ -31,3 +31,8 @@ NOTE: The output above is only a sample of the complete command output. Skipped 
 For more information use the `--help` flag.
 ## Benchmarks
 See `BENCHMARKS.md`
+
+## Faster Alternatives
+Most of these options are in an experimental state and/or are missing some of the features of `pff`. However, they run faster, in some or all cases, than `pff`:
+- `pvf`: https://mastodon.social/@pervognsen/110739397974530013
+- `fdf`: https://github.com/alexcu2718/fdf
